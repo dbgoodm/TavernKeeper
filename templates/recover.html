@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Password Recovery | TavernKeeper{% endblock %}
+{% block content %}
+  <section class="auth-shell">
+    <div class="auth-panel">
+      <div class="auth-copy">
+        <div class="brand auth-brand">
+          <div class="brand-mark" aria-hidden="true">
+            <img src="{{ url_for('static', filename='assets/tavernkeeper-logo.svg') }}" alt="" />
+          </div>
+          <div>
+            <h1>TavernKeeper</h1>
+            <p>Account recovery</p>
+          </div>
+        </div>
+        <p class="eyebrow">The Gods' Grace</p>
+        <p class="brand-copy">
+          This page stands in for the real password recovery flow. Later we can wire it to email reset tokens and a proper reset form.
+        </p>
+      </div>
+
+      <div class="auth-card">
+        <p class="label">Recover Access</p>
+        <h2>Request password recovery</h2>
+        <form class="auth-form" method="post">
+          <label>
+            Email Or Username
+            <input type="text" name="recovery_identifier" placeholder="you@example.com or Mara Voss" required />
+          </label>
+          <button class="primary-btn wide" type="submit">Ask The Gods For Grace</button>
+          <a class="ghost-btn" href="{{ url_for('auth', tab='login') }}">Back To Login</a>
+        </form>
+      </div>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,206 @@
+{% if current_user and current_user.role == "player" and active_sidebar_membership %}
+  <button class="notes-drawer-toggle" id="notesDrawerToggle" type="button" aria-expanded="false">Notes</button>
+  <aside class="notes-drawer" id="notesDrawer" hidden>
+    <div class="notes-drawer-header">
+      <div>
+        <p class="label">Session Notes</p>
+        <h3>Character notebook</h3>
+      </div>
+      <button class="preview-close" id="notesDrawerClose" type="button" aria-label="Close session notes">X</button>
+    </div>
+
+    <div class="notes-drawer-list">
+      <button class="ghost-btn small-button notes-new-button" id="notesNewButton" type="button">New Session Note</button>
+      {% if drawer_character_notes %}
+        <label>
+          Open Existing Note
+          <select id="notesEntrySelect">
+            <option value="">Select a note</option>
+            {% for note in drawer_character_notes %}
+              <option
+                value="{{ note.id }}"
+                data-note-title="{{ note.title }}"
+                data-note-body="{{ note.body }}"
+                data-note-visibility="{{ note.visibility | default('private') }}"
+              >
+                {{ note.title }} · {{ "Shared" if note.visibility == "shared" else "DM Only" if note.visibility == "dm_only" else "Private" }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+      {% else %}
+        <p class="feed-empty">No character notes yet.</p>
+      {% endif %}
+    </div>
+
+    <form class="auth-form notes-editor-form" method="post" action="{{ url_for('player_note') }}" id="characterNoteForm">
+      <input type="hidden" name="next" value="{{ request.path }}" />
+      <input type="hidden" name="note_id" id="characterNoteId" value="" />
+      <label>
+        Note Title
+        <input type="text" name="title" id="characterNoteTitle" placeholder="Session 05: At the flooded crypt" required />
+      </label>
+      <div class="broadcast-field">
+        <span class="field-label">Markdown Formatting</span>
+        <div class="markdown-toolbar">
+          <button type="button" class="markdown-tool" data-note-wrap="**">Bold</button>
+          <button type="button" class="markdown-tool" data-note-wrap="_">Italic</button>
+          <button type="button" class="markdown-tool" data-note-prefix="# ">Heading</button>
+          <button type="button" class="markdown-tool" data-note-prefix="- ">Bullet</button>
+          <button type="button" class="markdown-tool" data-note-prefix="[Link text](https://)">Link</button>
+        </div>
+      </div>
+      <label>
+        Note Body
+        <textarea name="body" id="characterNoteBody" rows="14" placeholder="Write or continue your session notes in markdown." required></textarea>
+      </label>
+      <label>
+        Visibility
+        <select name="visibility" id="characterNoteVisibility">
+          <option value="private" selected>Private</option>
+          <option value="dm_only">DM Only</option>
+          <option value="shared">Shared With Campaign</option>
+        </select>
+      </label>
+      <button class="primary-btn" type="submit">Save Session Note</button>
+    </form>
+  </aside>
+
+  <script>
+    (() => {
+      const draftStorageKey = "tavernkeeper-note-draft:{{ active_sidebar_membership.id }}";
+      const notesDrawer = document.getElementById("notesDrawer");
+      const notesDrawerToggle = document.getElementById("notesDrawerToggle");
+      const notesDrawerClose = document.getElementById("notesDrawerClose");
+      const noteIdInput = document.getElementById("characterNoteId");
+      const noteTitleInput = document.getElementById("characterNoteTitle");
+      const noteBodyInput = document.getElementById("characterNoteBody");
+      const noteVisibilityInput = document.getElementById("characterNoteVisibility");
+      const notesNewButton = document.getElementById("notesNewButton");
+      const notesEntrySelect = document.getElementById("notesEntrySelect");
+
+      if (!notesDrawer || !notesDrawerToggle || !notesDrawerClose || !noteIdInput || !noteTitleInput || !noteBodyInput || !noteVisibilityInput || !notesNewButton) {
+        return;
+      }
+
+      function saveDraft() {
+        const payload = {
+          noteId: noteIdInput.value,
+          title: noteTitleInput.value,
+          body: noteBodyInput.value,
+          visibility: noteVisibilityInput.value,
+        };
+        window.localStorage.setItem(draftStorageKey, JSON.stringify(payload));
+      }
+
+      function clearDraft() {
+        window.localStorage.removeItem(draftStorageKey);
+      }
+
+      function loadDraft() {
+        const raw = window.localStorage.getItem(draftStorageKey);
+        if (!raw) {
+          return;
+        }
+
+        try {
+          const payload = JSON.parse(raw);
+          noteIdInput.value = payload.noteId || "";
+          noteTitleInput.value = payload.title || "";
+          noteBodyInput.value = payload.body || "";
+          noteVisibilityInput.value = payload.visibility || "private";
+        } catch (error) {
+          clearDraft();
+        }
+      }
+
+      function setNotesDrawerOpen(open) {
+        notesDrawer.hidden = !open;
+        notesDrawerToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+
+      notesDrawerToggle.addEventListener("click", () => {
+        setNotesDrawerOpen(notesDrawer.hidden);
+      });
+
+      notesDrawerClose.addEventListener("click", () => setNotesDrawerOpen(false));
+      notesNewButton.addEventListener("click", () => {
+        noteIdInput.value = "";
+        noteTitleInput.value = "";
+        noteBodyInput.value = "";
+        noteVisibilityInput.value = "private";
+        if (notesEntrySelect) {
+          notesEntrySelect.value = "";
+        }
+        saveDraft();
+        setNotesDrawerOpen(true);
+        noteTitleInput.focus();
+      });
+
+      if (notesEntrySelect) {
+        notesEntrySelect.addEventListener("change", () => {
+          const selectedOption = notesEntrySelect.options[notesEntrySelect.selectedIndex];
+          if (!selectedOption || !selectedOption.value) {
+            return;
+          }
+
+          noteIdInput.value = selectedOption.value || "";
+          noteTitleInput.value = selectedOption.dataset.noteTitle || "";
+          noteBodyInput.value = selectedOption.dataset.noteBody || "";
+          noteVisibilityInput.value = selectedOption.dataset.noteVisibility || "private";
+          saveDraft();
+          setNotesDrawerOpen(true);
+          noteBodyInput.focus();
+        });
+      }
+
+      document.addEventListener("click", (event) => {
+        const editTrigger = event.target.closest("[data-edit-note]");
+        if (!editTrigger) {
+          return;
+        }
+
+        noteIdInput.value = editTrigger.dataset.noteId || "";
+        noteTitleInput.value = editTrigger.dataset.noteTitle || "";
+        noteBodyInput.value = editTrigger.dataset.noteBody || "";
+        noteVisibilityInput.value = editTrigger.dataset.noteVisibility || "private";
+
+        if (notesEntrySelect) {
+          notesEntrySelect.value = noteIdInput.value;
+        }
+
+        saveDraft();
+        setNotesDrawerOpen(true);
+        noteBodyInput.focus();
+      });
+
+      noteTitleInput.addEventListener("input", saveDraft);
+      noteBodyInput.addEventListener("input", saveDraft);
+      noteVisibilityInput.addEventListener("change", saveDraft);
+
+      document.querySelectorAll("[data-note-wrap], [data-note-prefix]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const wrap = button.dataset.noteWrap;
+          const prefix = button.dataset.notePrefix;
+          const start = noteBodyInput.selectionStart;
+          const end = noteBodyInput.selectionEnd;
+          const selected = noteBodyInput.value.slice(start, end);
+          let replacement = selected;
+
+          if (wrap) {
+            replacement = `${wrap}${selected || "text"}${wrap}`;
+          } else if (prefix) {
+            replacement = `${prefix}${selected || ""}`;
+          }
+
+          noteBodyInput.setRangeText(replacement, start, end, "end");
+          noteBodyInput.focus();
+          saveDraft();
+        });
+      });
+
+      document.getElementById("characterNoteForm").addEventListener("submit", clearDraft);
+      loadDraft();
+    })();
+  </script>
+{% endif %}

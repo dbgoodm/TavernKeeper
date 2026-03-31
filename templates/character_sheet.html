@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block title %}Character Sheet | TavernKeeper{% endblock %}
+{% block app_content %}
+  <div class="dashboard-header">
+    <div>
+      <p class="eyebrow">Character Sheet</p>
+      <h2>{{ membership.character_name }}</h2>
+      {% if campaign %}
+        <p>{{ campaign.name }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <section class="surface">
+    <form class="auth-form" method="post">
+      <div class="character-sheet-layout">
+        <section class="character-sheet-panel">
+          <div class="section-heading">
+            <div>
+              <p class="label">Identity</p>
+              <h3>Core character details</h3>
+            </div>
+          </div>
+          <div class="fields-2">
+            <label>
+              Portrait URL
+              <input type="url" name="portrait_url" value="{{ membership.portrait_url or '' }}" placeholder="https://example.com/portrait.jpg" />
+            </label>
+            <label>
+              Level
+              <input type="text" name="level" value="{{ membership.level or '' }}" placeholder="5" />
+            </label>
+            <label>
+              Class
+              <input type="text" name="class_name" value="{{ membership.class_name or '' }}" placeholder="Rogue" />
+            </label>
+            <label>
+              Subclass
+              <input type="text" name="subclass" value="{{ membership.subclass or '' }}" placeholder="Swashbuckler" />
+            </label>
+            <label>
+              Species
+              <input type="text" name="species" value="{{ membership.species or '' }}" placeholder="Half-Elf" />
+            </label>
+            <label>
+              Background
+              <input type="text" name="background" value="{{ membership.background or '' }}" placeholder="Sailor" />
+            </label>
+            <label class="field full">
+              Alignment
+              <input type="text" name="alignment" value="{{ membership.alignment or '' }}" placeholder="Chaotic Good" />
+            </label>
+          </div>
+        </section>
+
+        <section class="character-sheet-panel">
+          <div class="section-heading">
+            <div>
+              <p class="label">Abilities</p>
+              <h3>Ability scores and modifiers</h3>
+            </div>
+          </div>
+          <div class="ability-sheet-grid">
+            <label class="ability-sheet-card">
+              <span class="ability-preview-label">STR</span>
+              <input type="text" name="strength" value="{{ membership.strength or '' }}" placeholder="10" />
+              <span class="ability-sheet-mod">{{ ability_cells[0].modifier }}</span>
+            </label>
+            <label class="ability-sheet-card">
+              <span class="ability-preview-label">DEX</span>
+              <input type="text" name="dexterity" value="{{ membership.dexterity or '' }}" placeholder="18" />
+              <span class="ability-sheet-mod">{{ ability_cells[1].modifier }}</span>
+            </label>
+            <label class="ability-sheet-card">
+              <span class="ability-preview-label">CON</span>
+              <input type="text" name="constitution" value="{{ membership.constitution or '' }}" placeholder="14" />
+              <span class="ability-sheet-mod">{{ ability_cells[2].modifier }}</span>
+            </label>
+            <label class="ability-sheet-card">
+              <span class="ability-preview-label">INT</span>
+              <input type="text" name="intelligence" value="{{ membership.intelligence or '' }}" placeholder="12" />
+              <span class="ability-sheet-mod">{{ ability_cells[3].modifier }}</span>
+            </label>
+            <label class="ability-sheet-card">
+              <span class="ability-preview-label">WIS</span>
+              <input type="text" name="wisdom" value="{{ membership.wisdom or '' }}" placeholder="13" />
+              <span class="ability-sheet-mod">{{ ability_cells[4].modifier }}</span>
+            </label>
+            <label class="ability-sheet-card">
+              <span class="ability-preview-label">CHA</span>
+              <input type="text" name="charisma" value="{{ membership.charisma or '' }}" placeholder="16" />
+              <span class="ability-sheet-mod">{{ ability_cells[5].modifier }}</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="character-sheet-panel">
+          <div class="section-heading">
+            <div>
+              <p class="label">Combat</p>
+              <h3>Defenses and battle stats</h3>
+            </div>
+          </div>
+          <div class="fields-3">
+            <label>
+              Armor Class
+              <input type="text" name="armor_class" value="{{ membership.armor_class or '' }}" placeholder="16" />
+            </label>
+            <label>
+              Speed
+              <input type="text" name="speed" value="{{ membership.speed or '' }}" placeholder="30 ft." />
+            </label>
+            <label>
+              Initiative Bonus
+              <input type="text" name="initiative_bonus" value="{{ membership.initiative_bonus or '' }}" placeholder="+4" />
+            </label>
+            <label>
+              Proficiency Bonus
+              <input type="text" name="proficiency_bonus" value="{{ membership.proficiency_bonus or '' }}" placeholder="+3" />
+            </label>
+            <label>
+              Max Hit Points
+              <input type="text" name="max_hit_points" value="{{ membership.max_hit_points or '' }}" placeholder="38" />
+            </label>
+            <label>
+              Current Hit Points
+              <input type="text" name="current_hit_points" value="{{ membership.current_hit_points or '' }}" placeholder="38" />
+            </label>
+            <label class="field full">
+              Temporary Hit Points
+              <input type="text" name="temp_hit_points" value="{{ membership.temp_hit_points or '' }}" placeholder="0" />
+            </label>
+          </div>
+        </section>
+
+        <section class="character-sheet-panel">
+          <div class="section-heading">
+            <div>
+              <p class="label">Critical Condition</p>
+              <h3>Death saves</h3>
+            </div>
+          </div>
+          <div class="death-saves-panel" data-death-saves>
+            <input type="hidden" name="death_save_successes" id="deathSaveSuccessesInput" value="{{ death_save_successes }}" />
+            <input type="hidden" name="death_save_failures" id="deathSaveFailuresInput" value="{{ death_save_failures }}" />
+            <div class="death-save-track" data-track="successes">
+              <strong>Successes</strong>
+              <div class="death-save-orbs">
+                {% for index in range(3) %}
+                  <button class="death-save-orb{% if index < death_save_successes %} is-filled{% endif %}" type="button" data-death-save-button="successes" data-value="{{ index + 1 }}" aria-label="Set death save successes to {{ index + 1 }}">
+                    <span class="death-save-glyph">&#10003;</span>
+                  </button>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="death-save-track" data-track="failures">
+              <strong>Failures</strong>
+              <div class="death-save-orbs">
+                {% for index in range(3) %}
+                  <button class="death-save-orb death-save-orb-failure{% if index < death_save_failures %} is-filled{% endif %}" type="button" data-death-save-button="failures" data-value="{{ index + 1 }}" aria-label="Set death save failures to {{ index + 1 }}">
+                    <span class="death-save-glyph">&times;</span>
+                  </button>
+                {% endfor %}
+              </div>
+            </div>
+            <p class="field-hint">Click an orb to add or remove a death save.</p>
+          </div>
+        </section>
+
+        <section class="character-sheet-panel">
+          <div class="section-heading">
+            <div>
+              <p class="label">Awareness</p>
+              <h3>Passive scores</h3>
+            </div>
+          </div>
+          <div class="fields-3">
+            <label>
+              Passive Perception
+              <input type="text" name="passive_perception" value="{{ membership.passive_perception or '' }}" placeholder="15" />
+            </label>
+            <label>
+              Passive Investigation
+              <input type="text" name="passive_investigation" value="{{ membership.passive_investigation or '' }}" placeholder="14" />
+            </label>
+            <label>
+              Passive Insight
+              <input type="text" name="passive_insight" value="{{ membership.passive_insight or '' }}" placeholder="13" />
+            </label>
+          </div>
+        </section>
+
+        <section class="character-sheet-panel">
+          <div class="section-heading">
+            <div>
+              <p class="label">Skills</p>
+              <h3>Notable proficiencies</h3>
+            </div>
+          </div>
+          <label class="field full">
+            <span>One per line using `Skill | Proficient or Expertise | Modifier`. The dashboard will highlight the highest modifiers first.</span>
+            <textarea name="notable_proficiencies" rows="6" placeholder="Stealth | Expertise | +10&#10;Persuasion | Proficient | +6&#10;Thieves' Tools | Expertise | +10">{{ membership.notable_proficiencies or '' }}</textarea>
+          </label>
+        </section>
+      </div>
+
+      <label>
+        Character Notes
+        <textarea name="character_notes" rows="6" placeholder="Backstory hooks, bonds, flaws, inventory reminders, spell prep notes...">{{ membership.character_notes or '' }}</textarea>
+      </label>
+
+      <div class="actions">
+        <button class="primary-btn" type="submit">Save Character Sheet</button>
+        {% if membership.wiki_page_id %}
+          <a class="ghost-btn" href="{{ url_for('wiki_page', page_id=membership.wiki_page_id) }}">Open Wiki Page</a>
+        {% endif %}
+      </div>
+    </form>
+  </section>
+
+  <script>
+    (function () {
+      const root = document.querySelector("[data-death-saves]");
+      if (!root) return;
+
+      const successInput = document.getElementById("deathSaveSuccessesInput");
+      const failureInput = document.getElementById("deathSaveFailuresInput");
+
+      function updateTrack(kind, value) {
+        const buttons = root.querySelectorAll(`[data-death-save-button="${kind}"]`);
+        buttons.forEach((button) => {
+          const buttonValue = Number(button.getAttribute("data-value") || "0");
+          const isFilled = buttonValue <= value;
+          button.classList.toggle("is-filled", isFilled);
+          button.setAttribute("aria-pressed", isFilled ? "true" : "false");
+        });
+      }
+
+      function toggleValue(input, kind, rawValue) {
+        const current = Number(input.value || "0");
+        const next = current === rawValue ? rawValue - 1 : rawValue;
+        input.value = String(Math.max(0, Math.min(3, next)));
+        updateTrack(kind, Number(input.value));
+      }
+
+      root.querySelectorAll("[data-death-save-button='successes']").forEach((button) => {
+        button.addEventListener("click", () => {
+          toggleValue(successInput, "successes", Number(button.getAttribute("data-value") || "0"));
+        });
+      });
+
+      root.querySelectorAll("[data-death-save-button='failures']").forEach((button) => {
+        button.addEventListener("click", () => {
+          toggleValue(failureInput, "failures", Number(button.getAttribute("data-value") || "0"));
+        });
+      });
+
+      updateTrack("successes", Number(successInput.value || "0"));
+      updateTrack("failures", Number(failureInput.value || "0"));
+    }());
+  </script>
+{% endblock %}

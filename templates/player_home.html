@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+{% block title %}Player Home | TavernKeeper{% endblock %}
+{% block app_content %}
+  <div class="dashboard-header">
+    <div>
+      <p class="eyebrow">Player Dashboard</p>
+      <h2>{{ campaign.name }}</h2>
+    </div>
+  </div>
+
+  <section class="surface whats-new-surface">
+    <div class="section-heading">
+      <div>
+        <h3>What's New?</h3>
+      </div>
+    </div>
+    <div class="whats-new-grid">
+      <article class="stat-card compact-card">
+        <p class="label">Next Session</p>
+        <strong>{{ now_next.next_session }}</strong>
+        <span>The next session time has not been posted yet.</span>
+      </article>
+      <article class="stat-card compact-card">
+        <p class="label">DM Updates</p>
+        <strong>{{ now_next.update_count }}</strong>
+        <span>Recent announcements, handouts, and lore drops visible to you.</span>
+      </article>
+      <article class="stat-card compact-card">
+        <p class="label">Open Quests</p>
+        <strong>{{ now_next.open_quests }}</strong>
+        <span>Quests still waiting to be accepted from the bulletin board.</span>
+      </article>
+      <article class="next-step-card compact-card">
+        <p class="label">Next Step</p>
+        <strong>{{ now_next.next_step.title }}</strong>
+        <span>{{ now_next.next_step.detail }}</span>
+        <a class="ghost-btn small-button" href="{{ now_next.next_step.href }}">{{ now_next.next_step.label }}</a>
+      </article>
+    </div>
+  </section>
+
+  <div class="content-grid player-priority-grid">
+    <section class="surface">
+      <div class="player-character-summary">
+        <div class="player-character-portrait">
+          {% if membership.portrait_url %}
+            <img src="{{ membership.portrait_url }}" alt="{{ membership.character_name }} portrait" />
+          {% else %}
+            <span>{{ membership.character_name[0]|upper }}</span>
+          {% endif %}
+        </div>
+        <div class="player-character-copy">
+          <div class="player-character-heading">
+            <h3>{{ membership.character_name }}</h3>
+            <p>{{ membership.class_name or "Class Pending" }} - {{ membership.subclass or "Subclass Pending" }}</p>
+          </div>
+          <div class="player-character-identity-line">
+            <span>Level {{ membership.level or "-" }}</span>
+            <span>{{ membership.species or "Species Pending" }}</span>
+            <span>{{ membership.background or "Background Pending" }}</span>
+            <span>HP {{ membership.current_hit_points or "-" }}/{{ membership.max_hit_points or "-" }}</span>
+          </div>
+          <div class="player-character-topstats">
+            <div class="player-character-mainstats">
+              <div class="ability-preview-grid">
+                {% for cell in ability_cells %}
+                  <div class="ability-preview-card">
+                    <span class="ability-preview-label">{{ cell.label }}</span>
+                    <strong>{{ cell.score }}</strong>
+                    <span class="ability-preview-mod">{{ cell.modifier }}</span>
+                  </div>
+                {% endfor %}
+              </div>
+              <div class="player-character-inline-stats">
+                <div class="party-ac-stat" aria-label="Armor Class">
+                  <span class="party-ac-icon">AC</span>
+                  <strong>AC</strong>
+                  <span>{{ membership.armor_class or "-" }}</span>
+                </div>
+                <div class="party-ac-stat" aria-label="Initiative Bonus">
+                  <span class="party-ac-icon">Init</span>
+                  <strong>Init</strong>
+                  <span>{{ membership.initiative_bonus or "-" }}</span>
+                </div>
+                <div class="party-ac-stat" aria-label="Proficiency Bonus">
+                  <span class="party-ac-icon">Prof</span>
+                  <strong>Prof</strong>
+                  <span>{{ membership.proficiency_bonus or "-" }}</span>
+                </div>
+                <div class="party-ac-stat" aria-label="Speed">
+                  <span class="party-ac-icon">Move</span>
+                  <strong>Speed</strong>
+                  <span>{{ membership.speed or "-" }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="player-character-sidecards">
+              <div class="player-character-passives">
+                <strong>Passives</strong>
+                <div class="player-character-passive-list">
+                  <span>Perception {{ membership.passive_perception or "-" }}</span>
+                  <span>Investigation {{ membership.passive_investigation or "-" }}</span>
+                  <span>Insight {{ membership.passive_insight or "-" }}</span>
+                </div>
+              </div>
+              <div class="player-character-proficiencies">
+                <strong>Notable Proficiencies</strong>
+                {% if notable_proficiencies %}
+                  <div class="player-character-proficiency-list">
+                    {% for item in notable_proficiencies %}
+                      <div class="player-character-proficiency-item">
+                        <span>{{ item.name }}</span>
+                        <span>{{ item.tier }}{% if item.modifier %} - {{ item.modifier }}{% endif %}</span>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <p>No notable proficiencies added yet.</p>
+                {% endif %}
+              </div>
+              <div class="player-character-death-saves">
+                <strong>Death Saves</strong>
+                <div class="player-character-death-save-row">
+                  <span class="player-character-death-save-label">Successes</span>
+                  <div class="player-character-death-save-orbs">
+                    {% for index in range(3) %}
+                      <button class="death-save-orb{% if index < (membership.death_save_successes or '0')|int %} is-filled{% endif %}" type="button" data-dashboard-death-save="successes" data-value="{{ index + 1 }}" aria-label="Set death save successes to {{ index + 1 }}">
+                        <span class="death-save-glyph">&#10003;</span>
+                      </button>
+                    {% endfor %}
+                  </div>
+                </div>
+                <div class="player-character-death-save-row">
+                  <span class="player-character-death-save-label">Failures</span>
+                  <div class="player-character-death-save-orbs">
+                    {% for index in range(3) %}
+                      <button class="death-save-orb death-save-orb-failure{% if index < (membership.death_save_failures or '0')|int %} is-filled{% endif %}" type="button" data-dashboard-death-save="failures" data-value="{{ index + 1 }}" aria-label="Set death save failures to {{ index + 1 }}">
+                        <span class="death-save-glyph">&times;</span>
+                      </button>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="player-character-actions">
+          <a class="primary-btn" href="{{ url_for('player_character_sheet', campaign_id=membership.campaign_id) }}">Character Sheet</a>
+          <a class="ghost-btn" href="{{ url_for('character_page', membership_id=membership.id) }}">Character Page</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="stats-grid dashboard-stats">
+    <article class="stat-card compact-card">
+      <p class="label">Accepted Quests</p>
+      <strong>{{ accepted_quest_ids|length }}</strong>
+      <span>Quests you have taken from the campaign bulletin board.</span>
+    </article>
+    <article class="stat-card compact-card">
+      <p class="label">Your Notes</p>
+      <strong>{{ character_notes|length }}</strong>
+      <span>Private drafts and saved session notes in your drawer.</span>
+    </article>
+  </div>
+
+  <section class="surface">
+    <div class="section-heading">
+      <div>
+        <p class="label">Party Snapshot</p>
+        <h3>Who is in the party</h3>
+      </div>
+    </div>
+    {% if party_snapshot %}
+      <div class="party-snapshot-grid">
+        {% for member in party_snapshot %}
+          <article class="player-card party-snapshot-card">
+            <div class="party-snapshot-top">
+              <div class="party-snapshot-portrait">
+                {% if member.portrait_url %}
+                  <img src="{{ member.portrait_url }}" alt="{{ member.character_name }} portrait" />
+                {% else %}
+                  <span>{{ member.character_name[0]|upper }}</span>
+                {% endif %}
+              </div>
+              <div>
+                <h4><a class="card-title-link" href="{{ url_for('character_page', membership_id=member.membership_id) }}">{{ member.character_name }}</a></h4>
+                <p>{{ member.class_name }} - {{ member.subclass }}</p>
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="feed-empty">No other party members are visible in this campaign yet.</p>
+    {% endif %}
+  </section>
+
+  <div class="content-grid dashboard-feed-grid">
+    <section class="surface">
+      <div class="section-heading">
+        <div>
+          <p class="label">Active Quests</p>
+          <h3>Quest board</h3>
+        </div>
+      </div>
+      <div class="quest-tabs" id="questTabs">
+        <button class="entry-tab active" type="button" data-quest-tab="unaccepted">Unaccepted</button>
+        <button class="entry-tab" type="button" data-quest-tab="accepted">Accepted</button>
+      </div>
+      <div class="quest-board-scroll" id="questBoard">
+        {% set quest_items = announcements | selectattr("kind", "equalto", "Quest") | list %}
+        {% if quest_items %}
+          {% for item in quest_items %}
+            <article class="player-card quest-card campaign-feed-card{% if item.id not in accepted_quest_ids %} is-active{% endif %}" data-quest-card="{{ 'accepted' if item.id in accepted_quest_ids else 'unaccepted' }}" data-broadcast-id="{{ item.id }}">
+              <header>
+                <div>
+                  <h4>
+                    {% if item.wiki_page_id %}
+                      <a class="card-title-link" href="{{ url_for('wiki_page', page_id=item.wiki_page_id) }}">{{ item.title }}</a>
+                    {% else %}
+                      {{ item.title }}
+                    {% endif %}
+                  </h4>
+                  <p>{{ item.kind }}</p>
+                </div>
+                <span class="announcement-type">{{ "Accepted" if item.id in accepted_quest_ids else "Open" }}</span>
+              </header>
+              <p>{{ item.body }}</p>
+              {% if item.id not in accepted_quest_ids %}
+                <form method="post" action="{{ url_for('accept_quest', quest_id=item.id) }}" data-live-action="true">
+                  <button class="ghost-btn small-button" type="submit">Accept Quest</button>
+                </form>
+              {% else %}
+                <div class="inline-status">Quest accepted</div>
+              {% endif %}
+              <form method="post" action="{{ url_for('add_broadcast_to_notes', broadcast_id=item.id) }}" data-live-action="true">
+                <button class="ghost-btn small-button" type="submit">Add Quest To Session Notes</button>
+              </form>
+            </article>
+          {% endfor %}
+        {% else %}
+          <p class="feed-empty" id="questBoardEmpty">No active quests yet.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="surface">
+      <div class="section-heading">
+        <div>
+          <p class="label">Campaign Activity</p>
+          <h3>Campaign feed</h3>
+        </div>
+      </div>
+      <div class="campaign-feed-scroll" id="campaignFeed">
+        {% if campaign_feed %}
+          {% for item in campaign_feed %}
+            <article class="player-card broadcast-card campaign-feed-card" data-feed-entry-id="{{ item.id }}">
+              <header>
+                <div class="campaign-feed-headline">
+                  <h4>
+                    {% if item.kind == "Lore" and item.wiki_page_id %}
+                      <a class="card-title-link" href="{{ url_for('wiki_page', page_id=item.wiki_page_id) }}">{{ item.title }}</a>
+                    {% else %}
+                      <button class="card-title-button" type="button" data-preview-title="{{ item.title }}" data-preview-body="{{ item.body }}" data-preview-kind="{{ item.kind }}">{{ item.title }}</button>
+                    {% endif %}
+                  </h4>
+                </div>
+                <div class="campaign-feed-meta">
+                  <div class="campaign-feed-meta-row">
+                    {% if item.entry_type == "note" and item.author_user_id == current_user.id %}
+                      <div class="campaign-feed-actions">
+                        <button class="icon-button campaign-feed-edit" type="button" data-edit-note="true" data-note-id="{{ item.id }}" data-note-title="{{ item.title }}" data-note-body="{{ item.body }}" data-note-visibility="{{ item.visibility }}" aria-label="Edit note">✎</button>
+                        <form method="post" action="{{ url_for('delete_player_note', note_id=item.id) }}" data-confirm="Delete this note?">
+                          <input type="hidden" name="next" value="{{ request.path }}" />
+                          <button class="icon-button campaign-feed-delete" type="submit" aria-label="Delete note">🗑</button>
+                        </form>
+                      </div>
+                    {% endif %}
+                    <div class="campaign-feed-meta-stack">
+                      <span class="campaign-feed-byline">By {{ item.author_name }}</span>
+                      {% if item.entry_type == "note" %}
+                        <span class="visibility-badge">{{ item.visibility.replace('_', ' ')|title }}</span>
+                      {% else %}
+                        <span class="announcement-type">{{ item.kind }}</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </header>
+              <p>{{ item.body[:180] }}{% if item.body|length > 180 %}...{% endif %}</p>
+              <div class="broadcast-actions">
+                {% if item.kind in ["Announcement", "Hand Out", "Lore", "Quest"] %}
+                  <form method="post" action="{{ url_for('add_broadcast_to_notes', broadcast_id=item.id) }}" data-live-action="true">
+                    <button class="ghost-btn small-button" type="submit">Add To Session Notes</button>
+                  </form>
+                {% endif %}
+              </div>
+            </article>
+          {% endfor %}
+        {% else %}
+          <p class="feed-empty">There is nothing new in the campaign feed yet.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="preview-overlay" id="playerPreviewOverlay" hidden>
+    <div class="preview-dialog" role="dialog" aria-modal="true" aria-labelledby="playerPreviewTitle">
+      <button class="preview-close" type="button" id="playerPreviewClose" aria-label="Close preview">X</button>
+      <p class="label" id="playerPreviewKind">Preview</p>
+      <h3 id="playerPreviewTitle">Entry title</h3>
+      <div class="markdown-preview" id="playerPreviewBody"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const overlay = document.getElementById("playerPreviewOverlay");
+      const closeButton = document.getElementById("playerPreviewClose");
+      const titleNode = document.getElementById("playerPreviewTitle");
+      const kindNode = document.getElementById("playerPreviewKind");
+      const bodyNode = document.getElementById("playerPreviewBody");
+      const previewButtons = document.querySelectorAll("[data-preview-title]");
+      const editButtons = document.querySelectorAll("[data-edit-note='true']");
+      const dashboardDeathButtons = document.querySelectorAll("[data-dashboard-death-save]");
+      let deathSaveSuccesses = Number({{ (membership.death_save_successes or '0')|int }});
+      let deathSaveFailures = Number({{ (membership.death_save_failures or '0')|int }});
+
+      function renderPreviewBody(text) {
+        bodyNode.textContent = text || "";
+      }
+
+      function openPreview(title, kind, body) {
+        titleNode.textContent = title || "Preview";
+        kindNode.textContent = kind || "Entry";
+        renderPreviewBody(body);
+        overlay.hidden = false;
+      }
+
+      function closePreview() {
+        overlay.hidden = true;
+      }
+
+      previewButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          openPreview(
+            button.getAttribute("data-preview-title"),
+            button.getAttribute("data-preview-kind"),
+            button.getAttribute("data-preview-body")
+          );
+        });
+      });
+
+      closeButton?.addEventListener("click", closePreview);
+      overlay?.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+          closePreview();
+        }
+      });
+
+      editButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          window.dispatchEvent(new CustomEvent("player-note-edit", {
+            detail: {
+              id: button.dataset.noteId || "",
+              title: button.dataset.noteTitle || "",
+              body: button.dataset.noteBody || "",
+              visibility: button.dataset.noteVisibility || "private"
+            }
+          }));
+        });
+      });
+
+      function setDashboardDeathTrack(kind, value) {
+        document.querySelectorAll(`[data-dashboard-death-save="${kind}"]`).forEach((button) => {
+          const buttonValue = Number(button.getAttribute("data-value") || "0");
+          const isFilled = buttonValue <= value;
+          button.classList.toggle("is-filled", isFilled);
+          button.setAttribute("aria-pressed", isFilled ? "true" : "false");
+        });
+      }
+
+      async function persistDashboardDeathSaves() {
+        const formData = new FormData();
+        formData.append("death_save_successes", String(deathSaveSuccesses));
+        formData.append("death_save_failures", String(deathSaveFailures));
+
+        const response = await fetch("{{ url_for('player_death_saves') }}", {
+          method: "POST",
+          body: formData,
+          headers: { "X-Requested-With": "fetch" }
+        });
+
+        if (!response.ok) {
+          throw new Error("Could not update death saves");
+        }
+      }
+
+      function toggleDashboardDeathSave(kind, rawValue) {
+        if (kind === "successes") {
+          deathSaveSuccesses = deathSaveSuccesses === rawValue ? rawValue - 1 : rawValue;
+          deathSaveSuccesses = Math.max(0, Math.min(3, deathSaveSuccesses));
+          setDashboardDeathTrack("successes", deathSaveSuccesses);
+        } else {
+          deathSaveFailures = deathSaveFailures === rawValue ? rawValue - 1 : rawValue;
+          deathSaveFailures = Math.max(0, Math.min(3, deathSaveFailures));
+          setDashboardDeathTrack("failures", deathSaveFailures);
+        }
+
+        persistDashboardDeathSaves().catch(() => {
+          window.location.reload();
+        });
+      }
+
+      dashboardDeathButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          toggleDashboardDeathSave(
+            button.getAttribute("data-dashboard-death-save"),
+            Number(button.getAttribute("data-value") || "0")
+          );
+        });
+      });
+
+      setDashboardDeathTrack("successes", deathSaveSuccesses);
+      setDashboardDeathTrack("failures", deathSaveFailures);
+    }());
+  </script>
+{% endblock %}

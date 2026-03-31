@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TavernKeeper Prototype</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Manrope:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <section class="auth-shell active-screen" id="authScreen">
+      <div class="auth-panel">
+        <div class="auth-copy">
+          <div class="brand auth-brand">
+            <div class="brand-mark" aria-hidden="true">
+              <img src="./assets/tavernkeeper-logo.svg" alt="" />
+            </div>
+            <div>
+              <h1>TavernKeeper</h1>
+              <p>Campaign portal for DMs and players</p>
+            </div>
+          </div>
+          <p class="eyebrow">Campaign Portal</p>
+          <p class="brand-copy">
+            Start with a role, enter your campaign, and step into a space designed for either the DM or the players.
+          </p>
+          <div class="auth-highlights">
+            <div class="mini-feature">
+              <span class="label">For DMs</span>
+              <p>Invite players, review onboarding surveys, post announcements, and curate the campaign wiki.</p>
+            </div>
+            <div class="mini-feature">
+              <span class="label">For Players</span>
+              <p>Read handouts, keep notes, build character pages, and contribute to shared campaign knowledge.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-card">
+          <p class="label">Account Access</p>
+          <h2>Create your account</h2>
+          <div class="entry-tabs" id="entryTabs">
+            <button class="entry-tab active" type="button" data-entry="register">Register</button>
+            <button class="entry-tab" type="button" data-entry="login">Log In</button>
+          </div>
+          <form class="auth-form" id="authForm">
+            <div class="entry-panel active" data-entry-panel="register">
+              <label>
+                Email Address
+                <input type="email" id="registerEmail" placeholder="you@example.com" required />
+              </label>
+              <label>
+                Display Name
+                <input type="text" id="displayName" placeholder="Mara Voss or Sel Vale" required />
+              </label>
+              <label>
+                Password
+                <input type="password" id="registerPassword" placeholder="Create a secure password" required />
+              </label>
+              <div class="role-grid">
+                <button class="role-card" type="button" data-role="dm">
+                  <span class="label">Role</span>
+                  <strong>Dungeon Master</strong>
+                  <p>Create a DM account for campaign planning, invites, surveys, and world canon.</p>
+                </button>
+                <button class="role-card" type="button" data-role="player">
+                  <span class="label">Role</span>
+                  <strong>Player</strong>
+                  <p>Create a player account for notes, handouts, character pages, and campaign updates.</p>
+                </button>
+              </div>
+            </div>
+
+            <div class="entry-panel" data-entry-panel="login">
+              <label>
+                Email Address
+                <input type="email" id="loginEmail" placeholder="you@example.com" />
+              </label>
+              <label>
+                Password
+                <input type="password" id="loginPassword" placeholder="Enter your password" />
+              </label>
+              <label>
+                Display Name
+                <input type="text" id="loginDisplayName" placeholder="Mara Voss or Sel Vale" />
+              </label>
+            </div>
+
+            <button class="primary-btn wide" type="submit" id="enterPortalBtn">Create DM Account</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <div class="app-shell screen" id="dmScreen">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">
+              <img src="./assets/tavernkeeper-logo.svg" alt="" />
+            </div>
+            <div>
+              <h1>TavernKeeper</h1>
+              <p>Campaign planner and lore hub</p>
+            </div>
+          </div>
+          <p class="eyebrow">DM Control Center</p>
+          <p class="brand-copy">
+            Run your campaign from one place, from player onboarding to world canon.
+          </p>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="DM Primary">
+          <button class="nav-link active" data-screen="dm" data-view="overview">Overview</button>
+          <button class="nav-link" data-screen="dm" data-view="onboarding">Invites + Survey</button>
+          <button class="nav-link" data-screen="dm" data-view="announcements">Announcements</button>
+          <button class="nav-link" data-screen="dm" data-view="notes">Session Notes</button>
+          <button class="nav-link" data-screen="dm" data-view="wiki">Campaign Wiki</button>
+        </nav>
+
+        <section class="campaign-card">
+          <p class="label">Active Campaign</p>
+          <h2>Shadows Over Blackglass</h2>
+          <div class="campaign-meta">
+            <span>DM: Mara Voss</span>
+            <span>Invite Code: GLASS-7F2</span>
+            <span>Players: 5 / 6</span>
+          </div>
+        </section>
+      </aside>
+
+      <main class="main-panel">
+        <header class="hero">
+          <div>
+            <p class="eyebrow" id="dmHeroEyebrow">Dungeon Master Dashboard</p>
+            <h2>Bring onboarding, worldbuilding, handouts, and party notes into one place.</h2>
+          </div>
+          <div class="hero-actions">
+            <button class="primary-btn" id="shareInviteBtn">Copy Invite Code</button>
+            <button class="ghost-btn" id="backToLoginFromDm">Switch Role</button>
+          </div>
+        </header>
+
+        <section class="view-panel active" data-screen-panel="dm" data-panel="overview">
+          <div class="stats-grid">
+            <article class="stat-card">
+              <p class="label">Pending surveys</p>
+              <strong>2</strong>
+              <span>One brand-new player joined today.</span>
+            </article>
+            <article class="stat-card">
+              <p class="label">Unread notes</p>
+              <strong>8</strong>
+              <span>Three notes mention the ruined observatory.</span>
+            </article>
+            <article class="stat-card">
+              <p class="label">Player wiki drafts</p>
+              <strong>4</strong>
+              <span>Two are ready to import into canon.</span>
+            </article>
+          </div>
+
+          <div class="content-grid">
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Recent players</p>
+                  <h3>Onboarding snapshot</h3>
+                </div>
+                <span class="pill">DM only</span>
+              </div>
+              <div class="player-list" id="playerCards"></div>
+            </section>
+
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Current pulse</p>
+                  <h3>What your group wants</h3>
+                </div>
+              </div>
+              <ul class="insight-list" id="insightList"></ul>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-panel" data-screen-panel="dm" data-panel="onboarding">
+          <div class="two-column">
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Invite flow</p>
+                  <h3>How players join a campaign</h3>
+                </div>
+              </div>
+
+              <ol class="timeline-list">
+                <li>DM creates a campaign and shares an invite code or link.</li>
+                <li>Player joins, picks pronouns and play style preferences, and fills out a short survey.</li>
+                <li>DM sees survey answers grouped by tone, safety preferences, logistics, and hooks.</li>
+                <li>Players gain access to announcements, wiki entries, notes, and handouts.</li>
+              </ol>
+
+              <div class="invite-box">
+                <span class="label">Invite Code</span>
+                <strong id="inviteCode">GLASS-7F2</strong>
+                <p>Ideal for Discord posts, private messages, or session zero handouts.</p>
+              </div>
+            </section>
+
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Sample onboarding survey</p>
+                  <h3>Questions players answer</h3>
+                </div>
+              </div>
+              <div class="survey-list" id="surveyQuestions"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-panel" data-screen-panel="dm" data-panel="announcements">
+          <div class="surface">
+            <div class="section-heading">
+              <div>
+                <p class="label">Broadcast tools</p>
+                <h3>Announcements, letters, and props</h3>
+              </div>
+              <button class="ghost-btn small">Create Post</button>
+            </div>
+            <div class="announcement-feed" id="announcementFeed"></div>
+          </div>
+        </section>
+
+        <section class="view-panel" data-screen-panel="dm" data-panel="notes">
+          <div class="two-column">
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Shared record</p>
+                  <h3>Session notes feed</h3>
+                </div>
+              </div>
+              <div class="notes-feed" id="notesFeed"></div>
+            </section>
+
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Player contribution</p>
+                  <h3>Create a new note</h3>
+                </div>
+              </div>
+              <form class="note-form" id="noteForm">
+                <label>
+                  Title
+                  <input type="text" name="title" placeholder="Session 12: The chapel under the lake" required />
+                </label>
+                <label>
+                  Summary
+                  <textarea
+                    name="summary"
+                    rows="6"
+                    placeholder="Write a collaborative summary, clues, NPC names, and unresolved questions."
+                    required
+                  ></textarea>
+                </label>
+                <button class="primary-btn" type="submit">Add Sample Note</button>
+              </form>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-panel" data-screen-panel="dm" data-panel="wiki">
+          <div class="two-column">
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Official canon</p>
+                  <h3>Campaign wiki</h3>
+                </div>
+              </div>
+              <div class="wiki-grid" id="wikiGrid"></div>
+            </section>
+
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Player submissions</p>
+                  <h3>Import-worthy drafts</h3>
+                </div>
+              </div>
+              <div class="draft-list" id="draftList"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="app-shell screen" id="playerScreen">
+      <aside class="sidebar player-sidebar">
+        <div class="brand-block">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">
+              <img src="./assets/tavernkeeper-logo.svg" alt="" />
+            </div>
+            <div>
+              <h1>TavernKeeper</h1>
+              <p>Character journal and campaign notes</p>
+            </div>
+          </div>
+          <p class="eyebrow">Player Journal</p>
+          <p class="brand-copy">
+            Stay current on the campaign, share discoveries, and build out your character's story.
+          </p>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Player Primary">
+          <button class="nav-link active" data-screen="player" data-view="home">Home</button>
+          <button class="nav-link" data-screen="player" data-view="updates">DM Updates</button>
+          <button class="nav-link" data-screen="player" data-view="journal">My Notes</button>
+          <button class="nav-link" data-screen="player" data-view="codex">Character Wiki</button>
+        </nav>
+
+        <section class="campaign-card">
+          <p class="label">Joined Campaign</p>
+          <h2>Shadows Over Blackglass</h2>
+          <div class="campaign-meta">
+            <span>Current Character: Sel Vale</span>
+            <span>Session Next: Thursday 7:30 PM</span>
+            <span>Unread DM Posts: 3</span>
+          </div>
+        </section>
+      </aside>
+
+      <main class="main-panel">
+        <header class="hero player-hero">
+          <div>
+            <p class="eyebrow" id="playerHeroEyebrow">Player Dashboard</p>
+            <h2>Keep your character, notes, handouts, and discoveries within reach.</h2>
+          </div>
+          <div class="hero-actions">
+            <button class="primary-btn" id="joinCampaignBtn">Join Another Campaign</button>
+            <button class="ghost-btn" id="backToLoginFromPlayer">Switch Role</button>
+          </div>
+        </header>
+
+        <section class="view-panel active" data-screen-panel="player" data-panel="home">
+          <div class="stats-grid">
+            <article class="stat-card">
+              <p class="label">Unread updates</p>
+              <strong>3</strong>
+              <span>The DM posted a letter and a schedule update.</span>
+            </article>
+            <article class="stat-card">
+              <p class="label">Shared notes</p>
+              <strong>12</strong>
+              <span>Two new recaps were added after the last session.</span>
+            </article>
+            <article class="stat-card">
+              <p class="label">Character pages</p>
+              <strong>2</strong>
+              <span>One page is ready to share with the campaign.</span>
+            </article>
+          </div>
+
+          <div class="content-grid">
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Latest from the DM</p>
+                  <h3>Announcements and props</h3>
+                </div>
+              </div>
+              <div class="announcement-feed" id="playerAnnouncementFeed"></div>
+            </section>
+
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Personal spotlight</p>
+                  <h3>Your current character threads</h3>
+                </div>
+              </div>
+              <div class="player-focus-list" id="playerFocusList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-panel" data-screen-panel="player" data-panel="updates">
+          <div class="two-column">
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Inbox</p>
+                  <h3>Handouts, letters, and reminders</h3>
+                </div>
+              </div>
+              <div class="announcement-feed" id="playerInboxFeed"></div>
+            </section>
+
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Campaign at a glance</p>
+                  <h3>What you need before next session</h3>
+                </div>
+              </div>
+              <ul class="insight-list" id="playerChecklist"></ul>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-panel" data-screen-panel="player" data-panel="journal">
+          <div class="two-column">
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Campaign notes</p>
+                  <h3>Shared session log</h3>
+                </div>
+              </div>
+              <div class="notes-feed" id="playerNotesFeed"></div>
+            </section>
+
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Write for the table</p>
+                  <h3>Add to the session record</h3>
+                </div>
+              </div>
+              <form class="note-form" id="playerNoteForm">
+                <label>
+                  Title
+                  <input type="text" name="title" placeholder="Sel's notes after the flooded crypt" required />
+                </label>
+                <label>
+                  Summary
+                  <textarea
+                    name="summary"
+                    rows="6"
+                    placeholder="Add clues, theories, memorable moments, and anything the group should remember."
+                    required
+                  ></textarea>
+                </label>
+                <button class="primary-btn" type="submit">Share Note</button>
+              </form>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-panel" data-screen-panel="player" data-panel="codex">
+          <div class="two-column">
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">My pages</p>
+                  <h3>Character wiki and discoveries</h3>
+                </div>
+              </div>
+              <div class="wiki-grid" id="playerWikiGrid"></div>
+            </section>
+
+            <section class="surface">
+              <div class="section-heading">
+                <div>
+                  <p class="label">Share with DM</p>
+                  <h3>Pages ready for review</h3>
+                </div>
+              </div>
+              <div class="draft-list" id="playerSubmissionList"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <section class="toast" id="toast" aria-live="polite"></section>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

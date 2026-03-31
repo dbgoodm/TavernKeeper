@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Account Access | TavernKeeper{% endblock %}
+{% block content %}
+  <section class="auth-shell">
+    <div class="auth-panel">
+      <div class="auth-copy">
+        <div class="brand auth-brand">
+          <div class="brand-mark" aria-hidden="true">
+            <img src="{{ url_for('static', filename='assets/tavernkeeper-logo.svg') }}" alt="" />
+          </div>
+          <div>
+            <h1>TavernKeeper</h1>
+            <p>Campaign portal for DMs and players</p>
+          </div>
+        </div>
+        <p class="eyebrow">Account Access</p>
+        <p class="brand-copy">
+          Create your account first. From there, DMs can create campaigns and players can join by invite code and complete onboarding.
+        </p>
+        <div class="auth-highlights">
+          <div class="mini-feature">
+            <span class="label">Built First</span>
+            <p>Auth, campaign setup, invite-code join, onboarding survey, and DM survey review are now real flows.</p>
+          </div>
+          <div class="mini-feature">
+            <span class="label">Next Layer</span>
+            <p>Announcements, notes, and the shared wiki can now be added on top of working accounts and campaigns.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-card">
+        <p class="label">{{ "Account Access" if active_tab == "register" else "Welcome Back" }}</p>
+        <h2>{{ "Create your account" if active_tab == "register" else "Log into your account" }}</h2>
+        <div class="entry-tabs">
+          <a class="entry-tab {{ 'active' if active_tab == 'register' else '' }}" href="{{ url_for('auth') }}">Register</a>
+          <a class="entry-tab {{ 'active' if active_tab == 'login' else '' }}" href="{{ url_for('auth', tab='login') }}">Log In</a>
+        </div>
+
+        {% if active_tab == "register" %}
+          <form class="auth-form" method="post">
+            <input type="hidden" name="form_type" value="register" />
+            <label>
+              Email Address
+              <input type="email" name="email" placeholder="you@example.com" required />
+            </label>
+            <label>
+              Display Name
+              <input type="text" name="display_name" placeholder="Mara Voss or Sel Vale" required />
+            </label>
+            <label>
+              Password
+              <input type="password" name="password" placeholder="Create a secure password" required />
+            </label>
+            <div class="role-grid">
+              <label class="role-card radio-card">
+                <input class="role-input" type="radio" name="role" value="dm" checked />
+                <span class="label">Role</span>
+                <strong>Dungeon Master</strong>
+                <p>Create campaigns, share invite codes, and read player onboarding summaries.</p>
+              </label>
+              <label class="role-card radio-card">
+                <input class="role-input" type="radio" name="role" value="player" />
+                <span class="label">Role</span>
+                <strong>Player</strong>
+                <p>Join a campaign, fill out preferences, and prepare for the shared play tools.</p>
+              </label>
+            </div>
+            <button class="primary-btn wide" type="submit">Create Account</button>
+          </form>
+        {% else %}
+          <form class="auth-form" method="post">
+            <input type="hidden" name="form_type" value="login" />
+            <label>
+              Email Or Username
+              <input type="text" name="login_identifier" placeholder="you@example.com or Mara Voss" required />
+            </label>
+            <label>
+              Password
+              <input type="password" name="login_password" placeholder="Enter your password" required />
+            </label>
+            <a class="subtle-link centered-link" href="{{ url_for('recover') }}">Having trouble logging in? Seek the Gods' favor</a>
+            <button class="primary-btn wide" type="submit">Log In</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

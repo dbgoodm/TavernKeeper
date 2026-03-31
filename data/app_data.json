@@ -1,0 +1,369 @@
+{
+  "users": [
+    {
+      "id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242",
+      "email": "test@test.com",
+      "display_name": "DM",
+      "password_hash": "scrypt:32768:8:1$mj8SdJnktpFZFWlW$b68a2d0458430ea29be7fab25fc7b8d8481f346afcc3c7ea8345782ae51066d5868edd3d32cbf6971d204d493bcb7cfacbb936662fd55c9b51dd1c3962f39a34",
+      "role": "dm"
+    },
+    {
+      "id": "06af1816-60d8-4783-a71c-8d34cb0a607e",
+      "email": "test2@test.com",
+      "display_name": "Player",
+      "password_hash": "scrypt:32768:8:1$caIp82DjlmIQzdTr$001a6e8a7a47b935c6b510739776c97c80bcca8ee677e7fa6ab074a30e5a4876730264a0180aa07738e441046055aac716a6f390e6ed359ba9d8e5455c27782b",
+      "role": "player"
+    },
+    {
+      "id": "27a12181-6c50-4517-96ff-dc787df28935",
+      "email": "other@test.com",
+      "display_name": "Other",
+      "password_hash": "scrypt:32768:8:1$70qrLuWYEWbQmovj$2c0fddada97fbd67a4ba221f9fb7c72b55cbc4992226a7a4eec954d30034f459647ee333c683cf1dd12ea82786c6a01f5639244f3e675be1d64ffcab9172fff1",
+      "role": "player"
+    },
+    {
+      "id": "dce2a50a-6b1a-4e36-b555-f2a93454f30c",
+      "email": "rowan@test.com",
+      "display_name": "Rowan",
+      "password_hash": "scrypt:32768:8:1$70qrLuWYEWbQmovj$2c0fddada97fbd67a4ba221f9fb7c72b55cbc4992226a7a4eec954d30034f459647ee333c683cf1dd12ea82786c6a01f5639244f3e675be1d64ffcab9172fff1",
+      "role": "player"
+    },
+    {
+      "id": "a6c77561-bad3-43e3-a7fb-82c77d73f0bf",
+      "email": "thorne@test.com",
+      "display_name": "Thorne",
+      "password_hash": "scrypt:32768:8:1$70qrLuWYEWbQmovj$2c0fddada97fbd67a4ba221f9fb7c72b55cbc4992226a7a4eec954d30034f459647ee333c683cf1dd12ea82786c6a01f5639244f3e675be1d64ffcab9172fff1",
+      "role": "player"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "name": "Blackglass",
+      "premise": "A harbor-city mystery full of drowned bells, rival smugglers, strange tides, and a conspiracy sleeping beneath the piers.",
+      "invite_code": "5673-BE06",
+      "dm_user_id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242"
+    }
+  ],
+  "memberships": [
+    {
+      "id": "9e2b07b6-e2d0-41d4-97fb-5f5a2f723001",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "user_id": "06af1816-60d8-4783-a71c-8d34cb0a607e",
+      "character_name": "Seren Vale",
+      "portrait_url": "/static/assets/portrait-seren-vale.svg",
+      "class_name": "Rogue",
+      "subclass": "Swashbuckler",
+      "level": "5",
+      "species": "Half-Elf",
+      "background": "Smuggler",
+      "alignment": "Chaotic Good",
+      "armor_class": "16",
+      "speed": "30 ft.",
+      "max_hit_points": "38",
+      "current_hit_points": "38",
+      "temp_hit_points": "0",
+      "passive_perception": "15",
+      "passive_investigation": "14",
+      "passive_insight": "13",
+      "initiative_bonus": "+4",
+      "proficiency_bonus": "+3",
+      "strength": "10",
+      "dexterity": "18",
+      "constitution": "14",
+      "intelligence": "12",
+      "wisdom": "13",
+      "charisma": "16",
+      "character_notes": "Seren owes a favor to the Gull and Lantern and keeps a coded map hidden in her boot lining.",
+      "wiki_page_id": "1f8e83fd-e548-43fd-b6ef-cb47aa87ce44",
+      "notable_proficiencies": "",
+      "death_save_successes": "0",
+      "death_save_failures": "0"
+    },
+    {
+      "id": "31303dc5-16b8-4312-8fe1-4c2e31e66622",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "user_id": "27a12181-6c50-4517-96ff-dc787df28935",
+      "character_name": "Mira Dawn",
+      "portrait_url": "/static/assets/portrait-mira-dawn.svg",
+      "class_name": "Wizard",
+      "subclass": "Divination",
+      "armor_class": "12",
+      "speed": "30 ft.",
+      "passive_perception": "12",
+      "passive_investigation": "16",
+      "passive_insight": "14",
+      "initiative_bonus": "+2",
+      "proficiency_bonus": "+3",
+      "wiki_page_id": "18264fa4-74bb-4c1e-9a88-8538f4234762",
+      "notable_proficiencies": "",
+      "death_save_successes": "0",
+      "death_save_failures": "0"
+    },
+    {
+      "id": "76c5d074-13ce-44a5-a30a-b8fc79cdbe83",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "user_id": "dce2a50a-6b1a-4e36-b555-f2a93454f30c",
+      "character_name": "Elira Voss",
+      "portrait_url": "/static/assets/portrait-elira-voss.svg",
+      "class_name": "Bard",
+      "subclass": "College of Spirits",
+      "armor_class": "14",
+      "speed": "30 ft.",
+      "passive_perception": "13",
+      "passive_investigation": "12",
+      "passive_insight": "15",
+      "initiative_bonus": "+3",
+      "proficiency_bonus": "+3",
+      "wiki_page_id": "4c4d261f-ac28-4f01-9c84-bb0be40dd708",
+      "notable_proficiencies": "",
+      "death_save_successes": "0",
+      "death_save_failures": "0"
+    },
+    {
+      "id": "8332267a-c3c4-4630-8d84-af4086a39ced",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "user_id": "a6c77561-bad3-43e3-a7fb-82c77d73f0bf",
+      "character_name": "Thorne Ashfall",
+      "portrait_url": "/static/assets/portrait-thorne-ashfall.svg",
+      "class_name": "Cleric",
+      "subclass": "Tempest Domain",
+      "armor_class": "18",
+      "speed": "25 ft.",
+      "passive_perception": "14",
+      "passive_investigation": "11",
+      "passive_insight": "16",
+      "initiative_bonus": "+1",
+      "proficiency_bonus": "+3",
+      "wiki_page_id": "ec5a23a2-08bc-482f-b640-3566ded6a110",
+      "notable_proficiencies": "",
+      "death_save_successes": "0",
+      "death_save_failures": "0"
+    }
+  ],
+  "surveys": [
+    {
+      "id": "2a0eccef-b55d-442a-ae2c-7f5e8f326245",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "user_id": "06af1816-60d8-4783-a71c-8d34cb0a607e",
+      "play_style": "Roleplay heavy, intrigue, daring heists",
+      "tone": "Swashbuckling mystery with eerie harbor folklore",
+      "schedule_notes": "Weeknight sessions are best with some advance notice",
+      "boundaries": "Lines: sexual violence. Veils: graphic gore.",
+      "story_hook": "Seren is hunting the truth behind a drowned bell chart tied to her missing mentor.",
+      "raw_responses": {
+        "player_name": "Player"
+      }
+    },
+    {
+      "id": "0c684253-d0f2-4a39-966a-21cbe4edd004",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "user_id": "27a12181-6c50-4517-96ff-dc787df28935",
+      "play_style": "Experienced, lore-forward, puzzle solving",
+      "tone": "Occult mystery with clever reveals",
+      "schedule_notes": "Flexible weekends",
+      "boundaries": "Lines: child harm. Veils: body horror.",
+      "story_hook": "Mira has seen the same tide-marked sigil in three different prophecies.",
+      "raw_responses": {
+        "player_name": "Other"
+      }
+    },
+    {
+      "id": "ad08cc5c-f38b-4e8e-b72c-f68ff48d80a7",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "user_id": "dce2a50a-6b1a-4e36-b555-f2a93454f30c",
+      "play_style": "Roleplay heavy, collaborative worldbuilding",
+      "tone": "Romantic melancholy and eerie tavern scenes",
+      "schedule_notes": "Weekly on Thursdays",
+      "boundaries": "Lines: torture. Veils: addiction.",
+      "story_hook": "Elira keeps hearing a dead composer's melody whenever the harbor fog rolls in.",
+      "raw_responses": {
+        "player_name": "Rowan"
+      }
+    },
+    {
+      "id": "ea8c1110-0f26-4662-88a2-281cc7655a5f",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "user_id": "a6c77561-bad3-43e3-a7fb-82c77d73f0bf",
+      "play_style": "Tactical support, grim heroism, temple politics",
+      "tone": "Storm-lit action with moments of quiet faith",
+      "schedule_notes": "Every other Sunday",
+      "boundaries": "Lines: cruelty to animals. Veils: explicit self-harm.",
+      "story_hook": "Thorne believes the black tide is a judgment his order failed to prevent.",
+      "raw_responses": {
+        "player_name": "Thorne"
+      }
+    }
+  ],
+  "announcements": [
+    {
+      "id": "d81eb9d5-bca0-4837-ae90-bb9ce3143739",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "author_user_id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242",
+      "title": "Storm Over South Pier",
+      "body": "The next session opens at dusk with the harbor under lightning and a quarantine bell ringing from Dock Nine.",
+      "kind": "Announcement",
+      "target_user_ids": [],
+      "target_user_id": null,
+      "wiki_page_id": null,
+      "created_at": "2026-03-28T19:15:00+00:00"
+    },
+    {
+      "id": "75f477dd-5564-46e2-a4a2-47deca5166eb",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "author_user_id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242",
+      "title": "Letter from the Harbormaster",
+      "body": "## To the Blackglass Company\n\nIf you mean to keep your rooms at the Gull and Lantern, report to the signal tower before midnight.\n\n- Bring any salvage taken from Dock Nine\n- Speak to no one wearing a tar-black ribbon\n- If the bells ring twice, leave the pier immediately",
+      "kind": "Hand Out",
+      "target_user_ids": [],
+      "target_user_id": null,
+      "wiki_page_id": null,
+      "created_at": "2026-03-29T14:30:00+00:00"
+    },
+    {
+      "id": "e69526a7-2e4b-427e-80d6-ddfc95f1df2b",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "author_user_id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242",
+      "title": "Private Ledger Scrap",
+      "body": "A damp scrap of ledger paper lists three payments under the initials `E.V.` and marks one warehouse with the symbol of a broken bell.",
+      "kind": "Hand Out",
+      "target_user_ids": [
+        "dce2a50a-6b1a-4e36-b555-f2a93454f30c"
+      ],
+      "target_user_id": "dce2a50a-6b1a-4e36-b555-f2a93454f30c",
+      "wiki_page_id": null,
+      "created_at": "2026-03-29T16:10:00+00:00"
+    },
+    {
+      "id": "90f8618f-7b37-420d-bfa1-4a803958ff78",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "author_user_id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242",
+      "title": "The Bell Beneath Blackglass",
+      "body": "Old sailors swear there is a bell chained below the harbor floor. When it rings, doors open in places the city was supposed to forget.",
+      "kind": "Lore",
+      "target_user_ids": [],
+      "target_user_id": null,
+      "wiki_page_id": "5bce4921-3ef8-4fd4-a291-5e3ebba31795",
+      "created_at": "2026-03-29T18:20:00+00:00"
+    },
+    {
+      "id": "f40ec41c-16eb-4bd4-b746-2ed9654dc05f",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "author_user_id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242",
+      "title": "Seal the Smuggler Tunnel",
+      "body": "Find the flooded tunnel under Saltwake Row before the smugglers use it to move the relic crate.\n\n- Speak with the oyster divers\n- Follow the tar-black lantern marks\n- Decide whether to collapse or claim the route",
+      "kind": "Quest",
+      "target_user_ids": [],
+      "target_user_id": null,
+      "wiki_page_id": "0627faa9-cac2-461d-af9e-12afab66bb94",
+      "created_at": "2026-03-29T20:00:00+00:00"
+    },
+    {
+      "id": "c3652038-cb19-4ee5-893b-3ddfa47c3e5b",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "author_user_id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242",
+      "title": "Find the Lantern Cartographer",
+      "body": "Track down the cartographer who maps impossible alleys during red tide nights. Her charts may reveal where the drowned chapel drifts ashore.",
+      "kind": "Quest",
+      "target_user_ids": [],
+      "target_user_id": null,
+      "wiki_page_id": "f57ecffa-f2f3-4fd1-9712-cad05f36d3b4",
+      "created_at": "2026-03-30T01:05:00+00:00"
+    }
+  ],
+  "notes": [
+    {
+      "id": "45d8d678-b5cf-4e11-8624-975dc93ea3cb",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "author_user_id": "27a12181-6c50-4517-96ff-dc787df28935",
+      "author_name": "Other",
+      "title": "Mira's Research Notes",
+      "body": "Shared: the sigil on the quarantine bell matches the one in the drowned chapel sketch from the archives.",
+      "visibility": "shared",
+      "created_at": "2026-03-29T22:00:00+00:00"
+    },
+    {
+      "id": "82aa88af-8d80-4747-a673-6b1597b28fde",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "author_user_id": "dce2a50a-6b1a-4e36-b555-f2a93454f30c",
+      "author_name": "Rowan",
+      "title": "Ballad Fragments",
+      "body": "Shared: Elira recognizes the melody from the tavern pianist as part of a funeral song for ships lost beyond the fog line.",
+      "visibility": "shared",
+      "created_at": "2026-03-30T00:15:00+00:00"
+    },
+    {
+      "id": "1b04ec0e-e58f-49f8-9afd-0602f80766d0",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "author_user_id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242",
+      "author_name": "DM",
+      "title": "What The Harbor Knows",
+      "body": "DM note: every faction in Blackglass is pretending not to hear the second bell.",
+      "visibility": "dm_only",
+      "created_at": "2026-03-30T01:30:00+00:00"
+    }
+  ],
+  "wiki_pages": [
+    {
+      "id": "1f8e83fd-e548-43fd-b6ef-cb47aa87ce44",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "Seren Vale",
+      "content": "# Seren Vale\n\nLevel: 5\nClass: Rogue\nSubclass: Swashbuckler\nSpecies: Half-Elf\nBackground: Smuggler\nArmor Class: 16\nSpeed: 30 ft.\nMax Hit Points: 38\nCurrent Hit Points: 38\nTemporary Hit Points: 0\nPassive Perception: 15\nPassive Investigation: 14\nPassive Insight: 13\nInitiative Bonus: +4\nProficiency Bonus: +3\n\n## Ability Scores\nStrength: 10\nDexterity: 18\nConstitution: 14\nIntelligence: 12\nWisdom: 13\nCharisma: 16",
+      "source": "character_profile",
+      "membership_id": "9e2b07b6-e2d0-41d4-97fb-5f5a2f723001"
+    },
+    {
+      "id": "18264fa4-74bb-4c1e-9a88-8538f4234762",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "Mira Dawn",
+      "content": "# Mira Dawn\n\nClass: Wizard\nSubclass: Divination\nArmor Class: 12\nSpeed: 30 ft.\nPassive Perception: 12\nPassive Investigation: 16\nPassive Insight: 14\nInitiative Bonus: +2\nProficiency Bonus: +3",
+      "source": "character_profile",
+      "membership_id": "31303dc5-16b8-4312-8fe1-4c2e31e66622"
+    },
+    {
+      "id": "4c4d261f-ac28-4f01-9c84-bb0be40dd708",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "Elira Voss",
+      "content": "# Elira Voss\n\nClass: Bard\nSubclass: College of Spirits\nArmor Class: 14\nSpeed: 30 ft.\nPassive Perception: 13\nPassive Investigation: 12\nPassive Insight: 15\nInitiative Bonus: +3\nProficiency Bonus: +3",
+      "source": "character_profile",
+      "membership_id": "76c5d074-13ce-44a5-a30a-b8fc79cdbe83"
+    },
+    {
+      "id": "ec5a23a2-08bc-482f-b640-3566ded6a110",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "Thorne Ashfall",
+      "content": "# Thorne Ashfall\n\nClass: Cleric\nSubclass: Tempest Domain\nArmor Class: 18\nSpeed: 25 ft.\nPassive Perception: 14\nPassive Investigation: 11\nPassive Insight: 16\nInitiative Bonus: +1\nProficiency Bonus: +3",
+      "source": "character_profile",
+      "membership_id": "8332267a-c3c4-4630-8d84-af4086a39ced"
+    },
+    {
+      "id": "5bce4921-3ef8-4fd4-a291-5e3ebba31795",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "The Bell Beneath Blackglass",
+      "content": "# The Bell Beneath Blackglass\n\nThe bell is said to hang in a stone chamber below the harbor floor. It only rings when the tide rises against the old foundations beneath South Pier.\n\nRumors claim:\n- smugglers use the sound as a signal\n- drowned spirits answer the second ring\n- the city archives sealed every map leading down to it",
+      "source": "dm_broadcast"
+    },
+    {
+      "id": "0627faa9-cac2-461d-af9e-12afab66bb94",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "Seal the Smuggler Tunnel",
+      "content": "Find the flooded tunnel under Saltwake Row before the smugglers use it to move the relic crate.\n\n- Speak with the oyster divers\n- Follow the tar-black lantern marks\n- Decide whether to collapse or claim the route",
+      "source": "quest_broadcast"
+    },
+    {
+      "id": "f57ecffa-f2f3-4fd1-9712-cad05f36d3b4",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "Find the Lantern Cartographer",
+      "content": "Track down the cartographer who maps impossible alleys during red tide nights. Her charts may reveal where the drowned chapel drifts ashore.",
+      "source": "quest_broadcast"
+    }
+  ],
+  "quest_acceptances": [
+    {
+      "id": "da35f067-5a49-47b9-83dd-2ab8a3417fbe",
+      "quest_id": "f40ec41c-16eb-4bd4-b746-2ed9654dc05f",
+      "user_id": "27a12181-6c50-4517-96ff-dc787df28935",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00"
+    }
+  ]
+}

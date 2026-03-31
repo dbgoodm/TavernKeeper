@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title }} | TavernKeeper{% endblock %}
+{% block app_content %}
+  <section class="surface">
+    <div class="section-heading">
+      <div>
+        <p class="label">Campaign Wiki</p>
+        <h2>{{ page.title }}</h2>
+        {% if campaign %}
+          <p>{{ campaign.name }}</p>
+        {% endif %}
+      </div>
+    </div>
+    <div class="wiki-page-content">
+      <p>{{ page.content }}</p>
+    </div>
+  </section>
+{% endblock %}
