@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Formatting Help | TavernKeeper{% endblock %}
+{% block app_content %}
+  <section class="surface formatting-help-surface">
+    <div class="section-heading">
+      <div>
+        <p class="label">Reference</p>
+        <h2>Formatting Help</h2>
+      </div>
+    </div>
+
+    <div class="markdown-preview">
+      <p>Markdown is a lightweight way to format text using simple symbols instead of a complex editor. In TavernKeeper, it lets you structure notes, create headings and lists, link to World Atlas entries, and embed supported images or video directly into the text body.</p>
+    </div>
+
+    <div class="formatting-guide-grid">
+      <article class="campaign-card compact-card formatting-guide-card">
+        <p class="label">Headings</p>
+        <h3>Section Titles</h3>
+        <pre><code># Heading One
+## Heading Two
+### Heading Three</code></pre>
+        <p>Use headings to break long notes, lore drops, and handouts into readable sections.</p>
+      </article>
+
+      <article class="campaign-card compact-card formatting-guide-card">
+        <p class="label">Emphasis</p>
+        <h3>Bold And Italic</h3>
+        <pre><code>**bold text**
+_italic text_</code></pre>
+        <p>Use bold for key clues or warnings, and italic for emphasis, whispers, or flavor text.</p>
+      </article>
+
+      <article class="campaign-card compact-card formatting-guide-card">
+        <p class="label">Lists</p>
+        <h3>Bullets And Numbers</h3>
+        <pre><code>- First bullet
+- Second bullet
+
+1. First step
+2. Second step</code></pre>
+        <p>Great for quest steps, treasure lists, rumors, or DM prep checklists.</p>
+      </article>
+
+      <article class="campaign-card compact-card formatting-guide-card">
+        <p class="label">Quotes</p>
+        <h3>Blockquotes</h3>
+        <pre><code>&gt; A voice from the tide answered
+&gt; in a language older than bells.</code></pre>
+        <p>Useful for letters, prop text, spoken omens, or excerpts from ancient records.</p>
+      </article>
+
+      <article class="campaign-card compact-card formatting-guide-card">
+        <p class="label">Rules</p>
+        <h3>Divider Lines</h3>
+        <pre><code>---
+***</code></pre>
+        <p>Add a visual break between scenes, sections, or chunks of reference material.</p>
+      </article>
+
+      <article class="campaign-card compact-card formatting-guide-card">
+        <p class="label">Links</p>
+        <h3>External Links</h3>
+        <pre><code>[Map Reference](https://example.com/map)</code></pre>
+        <p>Link out to documents, references, maps, or other web resources.</p>
+      </article>
+
+      <article class="campaign-card compact-card formatting-guide-card">
+        <p class="label">World Atlas</p>
+        <h3>Entry Crosslinks</h3>
+        <pre><code>[[Aetheria, Realm of the Maelstrom]]</code></pre>
+        <p>The name must match an existing World Atlas entry exactly. If it matches, TavernKeeper turns it into a link.</p>
+      </article>
+
+      <article class="campaign-card compact-card formatting-guide-card">
+        <p class="label">Images</p>
+        <h3>Inline Image Embeds</h3>
+        <pre><code>[https://example.com/image.png]</code></pre>
+        <p>Put the image URL on its own line for the cleanest result. Supported image file URLs render inline.</p>
+      </article>
+
+      <article class="campaign-card compact-card formatting-guide-card">
+        <p class="label">Video</p>
+        <h3>Inline Video Embeds</h3>
+        <pre><code>[https://example.com/video.mp4]
+[https://youtu.be/example]
+[https://vimeo.com/example]</code></pre>
+        <p>Direct video files and supported platforms such as YouTube or Vimeo can embed inline. Other sites may fall back to a normal link if the host blocks embedding.</p>
+      </article>
+    </div>
+  </section>
+{% endblock %}

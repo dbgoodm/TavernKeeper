@@ -74,11 +74,21 @@
         </div>
 
         <label class="broadcast-field hidden-broadcast-field" data-broadcast-field="wiki-link">
-          Link Existing Wiki Page
+          Link Existing World Entry
           <select name="wiki_page_id">
             <option value="">Create one automatically</option>
             {% for page in wiki_pages %}
-              <option value="{{ page.id }}">{{ page.title }}</option>
+              <option value="{{ page.id }}" data-world-category="{{ page.world_category or '' }}">{{ page.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="broadcast-field hidden-broadcast-field" data-broadcast-field="world-category">
+          World Atlas Section
+          <select name="world_category" id="broadcastWorldCategoryInput">
+            <option value="">Choose a section</option>
+            {% for option in world_category_options %}
+              <option value="{{ option.key }}">{{ option.label }}</option>
             {% endfor %}
           </select>
         </label>
@@ -88,11 +98,29 @@
         <div class="broadcast-field hidden-broadcast-field" data-broadcast-field="markdown-tools">
           <span class="field-label">Markdown Formatting</span>
           <div class="markdown-toolbar">
-            <button type="button" class="markdown-tool" data-wrap="**">Bold</button>
-            <button type="button" class="markdown-tool" data-wrap="_">Italic</button>
-            <button type="button" class="markdown-tool" data-prefix="# ">Heading</button>
-            <button type="button" class="markdown-tool" data-prefix="- ">Bullet</button>
-            <button type="button" class="markdown-tool" data-prefix="[Link text](https://)">Link</button>
+            <button type="button" class="markdown-tool markdown-tool-glyph" data-wrap="**" title="Bold" aria-label="Bold"><strong>B</strong></button>
+            <button type="button" class="markdown-tool markdown-tool-glyph" data-wrap="_" title="Italic" aria-label="Italic"><em>I</em></button>
+            <div class="markdown-tool-group">
+              <button type="button" class="markdown-tool markdown-tool-glyph markdown-tool-heading-trigger" title="Headings" aria-label="Headings">H</button>
+              <div class="markdown-tool-menu">
+                <button type="button" class="markdown-tool markdown-tool-menu-item" data-prefix="# " title="Heading 1" aria-label="Heading 1">H1</button>
+                <button type="button" class="markdown-tool markdown-tool-menu-item" data-prefix="## " title="Heading 2" aria-label="Heading 2">H2</button>
+                <button type="button" class="markdown-tool markdown-tool-menu-item" data-prefix="### " title="Heading 3" aria-label="Heading 3">H3</button>
+              </div>
+            </div>
+            <button type="button" class="markdown-tool markdown-tool-glyph markdown-tool-icon" data-prefix="- " title="Bullet List" aria-label="Bullet List">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="6" cy="7" r="1.8"></circle>
+                <circle cx="6" cy="12" r="1.8"></circle>
+                <circle cx="6" cy="17" r="1.8"></circle>
+                <path d="M10 7h8"></path>
+                <path d="M10 12h8"></path>
+                <path d="M10 17h8"></path>
+              </svg>
+            </button>
+            <button type="button" class="markdown-tool markdown-tool-glyph" data-prefix="[Link text](https://)" title="Link" aria-label="Link">🔗</button>
+            <button type="button" class="markdown-tool markdown-tool-glyph" data-template="[https://example.com/image.png]" title="Image URL" aria-label="Image URL">🖼</button>
+            <button type="button" class="markdown-tool markdown-tool-glyph" data-template="[https://example.com/video.mp4]" title="Video URL" aria-label="Video URL">▶</button>
           </div>
         </div>
 
@@ -100,6 +128,9 @@
           <span id="broadcastBodyLabel">Message</span>
           <textarea name="body" id="broadcastBodyInput" rows="6" placeholder=""></textarea>
         </label>
+        <div class="broadcast-field hidden-broadcast-field" data-broadcast-field="formatting-help">
+          {% include "_formatting_help_link.html" %}
+        </div>
 
         <button class="primary-btn broadcast-submit" type="submit" data-broadcast-field="submit">Publish</button>
       </form>
@@ -127,7 +158,7 @@
                 <div class="party-identity">
                   <h4>
                     {% if character.wiki_page_id %}
-                      <a class="card-title-link" href="{{ url_for('wiki_page', page_id=character.wiki_page_id) }}">{{ character.character_name }}</a>
+                      <a class="card-title-link" href="{{ url_for('world_entry', page_id=character.wiki_page_id) }}">{{ character.character_name }}</a>
                     {% else %}
                       {{ character.character_name }}
                     {% endif %}
@@ -193,7 +224,7 @@
                   <div class="campaign-feed-headline">
                     <h4>
                       {% if quest.wiki_page_id %}
-                        <a class="card-title-link" href="{{ url_for('wiki_page', page_id=quest.wiki_page_id) }}">{{ quest.title }}</a>
+                        <a class="card-title-link" href="{{ url_for('world_entry', page_id=quest.wiki_page_id) }}">{{ quest.title }}</a>
                       {% else %}
                         {{ quest.title }}
                       {% endif %}
@@ -217,7 +248,7 @@
                     </div>
                   </div>
                 </header>
-                <p>{{ quest.body }}</p>
+                <div class="markdown-preview compact-markdown">{{ quest.rendered_body|safe }}</div>
                 {% if quest.accepted_names %}
                   <p><strong>Accepted By:</strong> {{ quest.accepted_names | join(", ") }}</p>
                 {% endif %}
@@ -244,9 +275,9 @@
                   <div class="campaign-feed-headline">
                     <h4>
                       {% if item.kind == "Lore" and item.wiki_page_id %}
-                        <a class="card-title-link" href="{{ url_for('wiki_page', page_id=item.wiki_page_id) }}">{{ item.title }}</a>
+                        <a class="card-title-link" href="{{ url_for('world_entry', page_id=item.wiki_page_id) }}">{{ item.title }}</a>
                       {% else %}
-                        <button class="card-title-button" type="button" data-preview-title="{{ item.title }}" data-preview-body="{{ item.body }}" data-preview-kind="{{ item.kind }}">{{ item.title }}</button>
+                        <button class="card-title-button" type="button" data-preview-title="{{ item.title }}" data-preview-body-html="{{ item.rendered_body|e }}" data-preview-kind="{{ item.kind }}">{{ item.title }}</button>
                       {% endif %}
                     </h4>
                   </div>
@@ -268,7 +299,7 @@
                     </div>
                   </div>
                 </header>
-                <p>{{ item.body }}</p>
+                <div class="markdown-preview compact-markdown">{{ item.rendered_body|safe }}</div>
               </article>
             {% endfor %}
           {% else %}
@@ -295,6 +326,7 @@
           Note Body
           <textarea name="body" rows="4" placeholder="Summarize the session, clues, NPCs, and unresolved threads." required></textarea>
         </label>
+        {% include "_formatting_help_link.html" %}
         <label>
           Visibility
           <select name="visibility">
@@ -344,20 +376,23 @@
       const audienceAllInput = document.getElementById("audience-all");
       const audiencePlayerInputs = document.querySelectorAll("input[name='target_user_ids']");
       const wikiPageSelect = composerForm.querySelector("select[name='wiki_page_id']");
+      const worldCategorySelect = document.getElementById("broadcastWorldCategoryInput");
       const fieldMap = {
         title: document.querySelector("[data-broadcast-field='title']"),
         targeting: document.querySelector("[data-broadcast-field='targeting']"),
         wikiLink: document.querySelector("[data-broadcast-field='wiki-link']"),
+        worldCategory: document.querySelector("[data-broadcast-field='world-category']"),
         markdownTools: document.querySelector("[data-broadcast-field='markdown-tools']"),
         body: document.querySelector("[data-broadcast-field='body']"),
+        formattingHelp: document.querySelector("[data-broadcast-field='formatting-help']"),
         submit: document.querySelector("[data-broadcast-field='submit']"),
       };
 
       const modeConfig = {
-        announcement: { kind: "Announcement", titlePlaceholder: "Campaign announcement", bodyLabel: "Details", bodyPlaceholder: "Write the announcement details for the whole table.", show: ["title", "body", "submit"] },
-        handout: { kind: "Hand Out", titlePlaceholder: "Handout title", bodyLabel: "Handout Content", bodyPlaceholder: "Use markdown to format the handout text for players.", show: ["title", "targeting", "markdownTools", "body", "submit"] },
-        quest: { kind: "Quest", titlePlaceholder: "Quest title", bodyLabel: "Quest Details", bodyPlaceholder: "Use markdown for quest hooks, rewards, steps, and rumors.", show: ["title", "markdownTools", "body", "submit"] },
-        lore: { kind: "Lore", titlePlaceholder: "Lore entry title", bodyLabel: "Lore Content", bodyPlaceholder: "Write the lore entry in markdown. If you do not link a wiki page, one will be created automatically.", show: ["title", "targeting", "wikiLink", "markdownTools", "body", "submit"] },
+        announcement: { kind: "Announcement", titlePlaceholder: "Campaign announcement", bodyLabel: "Details", bodyPlaceholder: "Write the announcement details for the whole table.", show: ["title", "body", "formattingHelp", "submit"] },
+        handout: { kind: "Hand Out", titlePlaceholder: "Handout title", bodyLabel: "Handout Content", bodyPlaceholder: "Use markdown to format the handout text for players.", show: ["title", "targeting", "markdownTools", "body", "formattingHelp", "submit"] },
+        quest: { kind: "Quest", titlePlaceholder: "Quest title", bodyLabel: "Quest Details", bodyPlaceholder: "Use markdown for quest hooks, rewards, steps, and rumors.", show: ["title", "markdownTools", "body", "formattingHelp", "submit"] },
+        lore: { kind: "Lore", titlePlaceholder: "Lore entry title", bodyLabel: "Lore Content", bodyPlaceholder: "Write the lore entry in markdown. If you do not link a world entry, one will be created automatically.", show: ["title", "targeting", "wikiLink", "worldCategory", "markdownTools", "body", "formattingHelp", "submit"] },
       };
 
       function setBroadcastMode(mode) {
@@ -377,6 +412,7 @@
         if (!broadcastIdInput.value) {
           resetAudienceSelection();
           if (wikiPageSelect) wikiPageSelect.value = "";
+          if (worldCategorySelect) worldCategorySelect.value = "";
         }
       }
 
@@ -401,12 +437,26 @@
         titleInput.value = button.dataset.broadcastTitle || "";
         bodyInput.value = button.dataset.broadcastBody || "";
         if (wikiPageSelect) wikiPageSelect.value = button.dataset.broadcastWikiPageId || "";
+        if (worldCategorySelect) {
+          worldCategorySelect.value = button.dataset.broadcastWorldCategory || "";
+          if (!worldCategorySelect.value && wikiPageSelect && wikiPageSelect.selectedOptions.length) {
+            worldCategorySelect.value = wikiPageSelect.selectedOptions[0].dataset.worldCategory || "";
+          }
+        }
         const targets = (button.dataset.broadcastTargets || "").split(",").map((value) => value.trim()).filter(Boolean);
         if (audienceAllInput) audienceAllInput.checked = targets.length === 0;
         audiencePlayerInputs.forEach((input) => {
           input.checked = targets.includes(input.value);
         });
         setBroadcastDrawerOpen(true);
+      }
+
+      if (wikiPageSelect && worldCategorySelect) {
+        wikiPageSelect.addEventListener("change", () => {
+          if (wikiPageSelect.value) {
+            worldCategorySelect.value = wikiPageSelect.selectedOptions[0].dataset.worldCategory || worldCategorySelect.value;
+          }
+        });
       }
 
       modeButtons.forEach((button) => {
@@ -428,6 +478,7 @@
           Object.values(fieldMap).forEach((field) => field.classList.add("hidden-broadcast-field"));
           resetAudienceSelection();
           if (wikiPageSelect) wikiPageSelect.value = "";
+          if (worldCategorySelect) worldCategorySelect.value = "";
         }
         setBroadcastDrawerOpen(broadcastDrawer.hidden);
       });
@@ -462,12 +513,14 @@
         button.addEventListener("click", () => {
           const wrap = button.dataset.wrap;
           const prefix = button.dataset.prefix;
+          const template = button.dataset.template;
           const start = bodyInput.selectionStart;
           const end = bodyInput.selectionEnd;
           const selected = bodyInput.value.slice(start, end);
           let replacement = selected;
           if (wrap) replacement = `${wrap}${selected || "text"}${wrap}`;
           else if (prefix) replacement = `${prefix}${selected || ""}`;
+          else if (template) replacement = `${selected ? `[${selected}]` : template}`;
           bodyInput.setRangeText(replacement, start, end, "end");
           bodyInput.focus();
         });
@@ -476,7 +529,7 @@
       function openCampaignPreview(button) {
         campaignPreviewKind.textContent = button.dataset.previewKind || "";
         campaignPreviewTitle.textContent = button.dataset.previewTitle || "";
-        campaignPreviewBody.textContent = button.dataset.previewBody || "";
+        campaignPreviewBody.innerHTML = button.getAttribute("data-preview-body-html") || "";
         campaignPreview.hidden = false;
       }
 

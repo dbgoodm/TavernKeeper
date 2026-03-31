@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}World Atlas | TavernKeeper{% endblock %}
+{% block app_content %}
+  <section class="surface codex-surface codex-landing-surface">
+    <div class="codex-header">
+      <div class="codex-header-copy">
+        <p class="eyebrow">World Atlas</p>
+        <h1>{{ campaign.name if campaign else "World Atlas" }}</h1>
+        <p class="survey-top-copy">A worldbuilding hub for lore, cultures, factions, regions, and character dossiers. This atlas gives the campaign a single place to browse the setting.</p>
+      </div>
+      <div class="codex-header-actions">
+        <a class="ghost-btn" href="{{ url_for('world_landing') }}">All World Entries</a>
+      </div>
+    </div>
+
+    {% if featured_page %}
+      <section class="codex-featured">
+        <p class="label">Featured Setting Entry</p>
+        <h2><a class="card-title-link" href="{{ url_for('world_entry', page_id=featured_page.id) }}">{{ featured_page.title }}</a></h2>
+        <p>{{ featured_page.content[:320] }}{% if featured_page.content|length > 320 %}...{% endif %}</p>
+      </section>
+    {% endif %}
+
+    {% if collections %}
+      <section class="codex-section">
+        <div class="section-heading">
+          <div>
+            <p class="label">Foundations</p>
+            <h3>Core World Collections</h3>
+          </div>
+        </div>
+        <div class="codex-collection-grid">
+          {% for page in collections %}
+            <article class="codex-card">
+              <p class="label">{{ page.source|replace("_", " ")|title }}</p>
+              <h3><a class="card-title-link" href="{{ url_for('world_entry', page_id=page.id) }}">{{ page.title }}</a></h3>
+              <p class="wiki-index-snippet">{{ page.content[:180] }}{% if page.content|length > 180 %}...{% endif %}</p>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    <div class="codex-landing-grid">
+      <section class="codex-card" id="gods">
+        <p class="label">Pantheon</p>
+        <h3>Gods & Deities</h3>
+        <div class="actions">
+          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='gods') }}">Open Section</a>
+        </div>
+        <div class="codex-related-list">
+          {% for page in pantheon_entries %}
+            <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+              <strong>{{ page.title }}</strong>
+              <span>Deity Entry</span>
+            </a>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="codex-card" id="places">
+        <p class="label">Regions</p>
+        <h3>Continents & Realms</h3>
+        <div class="actions">
+          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='places') }}">Open Section</a>
+        </div>
+        <div class="codex-related-list">
+          {% for page in continent_entries %}
+            <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+              <strong>{{ page.title }}</strong>
+              <span>Location Entry</span>
+            </a>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="codex-card" id="factions">
+        <p class="label">Factions</p>
+        <h3>Organizations & Powers</h3>
+        <div class="actions">
+          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='factions') }}">Open Section</a>
+        </div>
+        <div class="codex-related-list">
+          {% for page in faction_entries %}
+            <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+              <strong>{{ page.title }}</strong>
+              <span>Faction Entry</span>
+            </a>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="codex-card" id="culture">
+        <p class="label">Peoples</p>
+        <h3>Races of Aetheria</h3>
+        <div class="actions">
+          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='culture') }}">Open Section</a>
+        </div>
+        <div class="codex-related-list">
+          {% for page in race_entries %}
+            <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+              <strong>{{ page.title }}</strong>
+              <span>Race Entry</span>
+            </a>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <div class="codex-landing-grid">
+      <section class="codex-card" id="people">
+        <p class="label">Dossiers</p>
+        <h3>Character Entries</h3>
+        <div class="actions">
+          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='people') }}">Open Section</a>
+        </div>
+        {% if character_entries %}
+          <div class="codex-related-list">
+            {% for page in character_entries %}
+              <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+                <strong>{{ page.title }}</strong>
+                <span>Character Profile</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="feed-empty">No character entries are available yet.</p>
+        {% endif %}
+      </section>
+
+      <section class="codex-card" id="misc">
+        <p class="label">Recent Imports</p>
+        <h3>Newest World Entries</h3>
+        <div class="actions">
+          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='misc') }}">Open Section</a>
+        </div>
+        {% if recent_entries %}
+          <div class="codex-related-list">
+            {% for page in recent_entries %}
+              <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+                <strong>{{ page.title }}</strong>
+                <span>{{ page.source|replace("_", " ")|title }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="feed-empty">No imported entries are available yet.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="codex-landing-grid">
+      <section class="codex-card" id="flora-fauna">
+        <p class="label">Flora & Fauna</p>
+        <h3>Bestiary & Natural World</h3>
+        <div class="actions">
+          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='flora-fauna') }}">Open Section</a>
+        </div>
+        {% if flora_fauna_entries %}
+          <div class="codex-related-list">
+            {% for page in flora_fauna_entries %}
+              <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+                <strong>{{ page.title }}</strong>
+                <span>{{ page.source|replace("_", " ")|title }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="feed-empty">No flora or fauna entries are available yet.</p>
+        {% endif %}
+      </section>
+
+      <section class="codex-card" id="history">
+        <p class="label">History</p>
+        <h3>Timelines & Major Events</h3>
+        <div class="actions">
+          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='history') }}">Open Section</a>
+        </div>
+        {% if history_entries %}
+          <div class="codex-related-list">
+            {% for page in history_entries %}
+              <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+                <strong>{{ page.title }}</strong>
+                <span>{{ page.source|replace("_", " ")|title }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="feed-empty">No history entries are available yet.</p>
+        {% endif %}
+      </section>
+    </div>
+  </section>
+{% endblock %}

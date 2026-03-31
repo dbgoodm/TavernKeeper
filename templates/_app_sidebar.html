@@ -36,7 +36,25 @@
       </div>
     </div>
 
-    {% if active_sidebar_campaign %}
+    {% if sidebar_body_mode == "world" %}
+      <nav class="campaign-card compact-card sidebar-page-nav" aria-label="World Atlas navigation">
+        <a class="sidebar-link sidebar-page-link" href="{{ url_for('world_atlas') }}">World</a>
+        <div class="sidebar-page-group">
+          {% for item in world_sidebar_nav %}
+            <div class="sidebar-page-row">
+              <a class="sidebar-sublink sidebar-page-sublink" href="{{ item.href }}">
+                <span>{{ item.label }}</span>
+              </a>
+              {% if current_user.role == "dm" and item.editor_href %}
+                <a class="sidebar-add-link" href="{{ item.editor_href }}" aria-label="Create {{ item.label }} entry">+</a>
+              {% elif item.count %}
+                <span class="sidebar-link-count">{{ item.count }}</span>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </nav>
+    {% elif active_sidebar_campaign %}
       <div class="campaign-card compact-card">
         <div class="card-header-inline">
           <p class="label">Campaign Premise</p>
@@ -57,7 +75,6 @@
         {% endif %}
       </div>
     {% endif %}
-
   </div>
 
   <div class="sidebar-bottom">
@@ -79,7 +96,7 @@
       </div>
       <div class="account-dropdown">
         <a class="account-link" href="{{ url_for('dm_dashboard' if current_user.role == 'dm' else 'player_home') }}">Dashboard</a>
-        <a class="account-link" href="{{ url_for('wiki_index') }}">Wiki</a>
+        <a class="account-link" href="{{ url_for('world_atlas') }}">World Atlas</a>
         {% if current_user.role == "player" and active_sidebar_membership %}
           <a class="account-link" href="{{ url_for('player_character_sheet') }}">Character Sheet</a>
         {% endif %}

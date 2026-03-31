@@ -208,11 +208,12 @@
         Character Notes
         <textarea name="character_notes" rows="6" placeholder="Backstory hooks, bonds, flaws, inventory reminders, spell prep notes...">{{ membership.character_notes or '' }}</textarea>
       </label>
+      {% include "_formatting_help_link.html" %}
 
       <div class="actions">
         <button class="primary-btn" type="submit">Save Character Sheet</button>
         {% if membership.wiki_page_id %}
-          <a class="ghost-btn" href="{{ url_for('wiki_page', page_id=membership.wiki_page_id) }}">Open Wiki Page</a>
+          <a class="ghost-btn" href="{{ url_for('world_entry', page_id=membership.wiki_page_id) }}">Open World Entry</a>
         {% endif %}
       </div>
     </form>

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import html
 import json
+import re
 import secrets
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -66,6 +69,29 @@ def ensure_data_file() -> None:
             if key not in membership:
                 membership[key] = value
                 changed = True
+
+    for page in existing.get("wiki_pages", []):
+        page_defaults = {
+            "world_category": "",
+            "subtitle": "",
+            "summary": "",
+            "image_url": "",
+            "tags": "",
+            "status": "published",
+            "visibility": "all_players",
+            "visible_user_ids": [],
+            "detail_groups": [],
+            "related_entry_titles": "",
+        }
+        for key, value in page_defaults.items():
+            if key not in page:
+                page[key] = value
+                changed = True
+
+    for campaign in existing.get("campaigns", []):
+        if "world_editor_presets" not in campaign:
+            campaign["world_editor_presets"] = {}
+            changed = True
 
     existing_emails = {user["email"].lower() for user in existing["users"]}
     for seed_user in PROTOTYPE_SEED_USERS:
@@ -169,6 +195,25 @@ def get_campaign_wiki_pages(data: dict[str, list[dict[str, Any]]], campaign_id: 
 
 def get_wiki_page_by_id(data: dict[str, list[dict[str, Any]]], page_id: str) -> dict[str, Any] | None:
     return next((page for page in data["wiki_pages"] if page["id"] == page_id), None)
+
+
+def get_campaign_player_targets(data: dict[str, list[dict[str, Any]]], campaign_id: str) -> list[dict[str, str]]:
+    targets: list[dict[str, str]] = []
+    for membership in data["memberships"]:
+        if membership["campaign_id"] != campaign_id:
+            continue
+        user = get_user_by_id(data, membership["user_id"])
+        if not user or user.get("role") != "player":
+            continue
+        targets.append(
+            {
+                "user_id": membership["user_id"],
+                "membership_id": membership["id"],
+                "display_name": user["display_name"],
+                "character_name": membership.get("character_name", "Unknown Character"),
+            }
+        )
+    return sorted(targets, key=lambda item: (item["display_name"].lower(), item["character_name"].lower()))
 
 
 def build_character_wiki_content(membership: dict[str, Any]) -> str:
@@ -324,6 +369,268 @@ def parse_counter(value: Any, *, minimum: int = 0, maximum: int = 3) -> int:
     return max(minimum, min(maximum, numeric))
 
 
+WIKI_LINK_PATTERN = re.compile(r"\[\[([^\[\]]+)\]\]")
+MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\[\]]+)\]\((https?://[^)\s]+)\)")
+INLINE_MARKUP_PATTERN = re.compile(r"\[\[([^\[\]]+)\]\]|\[([^\[\]]+)\]\((https?://[^)\s]+)\)|\*\*([^*]+)\*\*|_([^_]+)_")
+MEDIA_BLOCK_PATTERN = re.compile(r"^\[(https?://[^\]]+)\]$")
+ORDERED_LIST_PATTERN = re.compile(r"^\d+\.\s+")
+
+
+def render_inline_markup(content: str, data: dict[str, list[dict[str, Any]]] | None = None, campaign_id: str | None = None) -> str:
+    raw_text = str(content or "")
+
+    pieces: list[str] = []
+    cursor = 0
+    for match in INLINE_MARKUP_PATTERN.finditer(raw_text):
+        pieces.append(html.escape(raw_text[cursor:match.start()]))
+        world_target = match.group(1)
+        markdown_text = match.group(2)
+        markdown_href = match.group(3)
+        bold_text = match.group(4)
+        italic_text = match.group(5)
+
+        if world_target is not None:
+            target = world_target.strip()
+            page = None
+            viewer = getattr(g, "user", None)
+            if data and campaign_id:
+                page = next(
+                    (
+                        item
+                        for item in get_campaign_wiki_pages(data, campaign_id)
+                        if item.get("title", "").strip().lower() == target.lower()
+                        and (viewer is None or can_user_view_world_page(data, viewer, item))
+                    ),
+                    None,
+                )
+            if page:
+                href = f"/world/{page['id']}"
+                pieces.append(f'<a class="card-title-link inline-world-link" href="{href}">{html.escape(page["title"])}</a>')
+            else:
+                pieces.append(html.escape(f"[[{target}]]"))
+        elif markdown_text is not None and markdown_href is not None:
+            safe_href = html.escape(markdown_href, quote=True)
+            pieces.append(
+                f'<a class="inline-world-link" href="{safe_href}" target="_blank" rel="noreferrer">{html.escape(markdown_text)}</a>'
+            )
+        elif bold_text is not None:
+            pieces.append(f"<strong>{html.escape(bold_text)}</strong>")
+        elif italic_text is not None:
+            pieces.append(f"<em>{html.escape(italic_text)}</em>")
+        cursor = match.end()
+    pieces.append(html.escape(raw_text[cursor:]))
+    return "".join(pieces)
+
+
+def is_safe_media_url(url: str) -> bool:
+    parsed = urlparse(url)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def is_image_url(url: str) -> bool:
+    path = urlparse(url).path.lower()
+    return path.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif"))
+
+
+def is_video_url(url: str) -> bool:
+    path = urlparse(url).path.lower()
+    return path.endswith((".mp4", ".webm", ".ogg", ".mov", ".m4v"))
+
+
+def get_video_embed_url(url: str) -> str | None:
+    parsed = urlparse(url)
+    host = parsed.netloc.lower()
+
+    if "youtube.com" in host:
+        video_id = parse_qs(parsed.query).get("v", [""])[0].strip()
+        if video_id:
+            return f"https://www.youtube.com/embed/{html.escape(video_id, quote=True)}"
+    if "youtu.be" in host:
+        video_id = parsed.path.strip("/").split("/")[0]
+        if video_id:
+            return f"https://www.youtube.com/embed/{html.escape(video_id, quote=True)}"
+    if "vimeo.com" in host:
+        video_id = parsed.path.strip("/").split("/")[0]
+        if video_id.isdigit():
+            return f"https://player.vimeo.com/video/{video_id}"
+    return None
+
+
+def render_media_block(url: str) -> str:
+    safe_url = html.escape(url, quote=True)
+    link_html = f'<a class="inline-world-link" href="{safe_url}" target="_blank" rel="noreferrer">Open media</a>'
+    if not is_safe_media_url(url):
+        return f"<p>{link_html}</p>"
+    if is_image_url(url):
+        return (
+            '<figure class="markdown-media markdown-image-block">'
+            f'<img class="markdown-image" src="{safe_url}" alt="Embedded image" loading="lazy" />'
+            "</figure>"
+        )
+    embed_url = get_video_embed_url(url)
+    if embed_url:
+        return (
+            '<div class="markdown-media markdown-video-block">'
+            f'<iframe class="markdown-video-frame" src="{embed_url}" '
+            'title="Embedded video" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>'
+            "</div>"
+        )
+    if is_video_url(url):
+        return (
+            '<div class="markdown-media markdown-video-block">'
+            f'<video class="markdown-video" controls preload="metadata" src="{safe_url}"></video>'
+            "</div>"
+        )
+    return f"<p>{link_html}</p>"
+
+
+def render_wiki_markup(
+    content: Any,
+    data: dict[str, list[dict[str, Any]]] | None = None,
+    campaign_id: str | None = None,
+) -> str:
+    lines = str(content or "").splitlines()
+    blocks: list[str] = []
+    paragraph_lines: list[str] = []
+    list_items: list[str] = []
+    ordered_list_items: list[str] = []
+    blockquote_lines: list[str] = []
+
+    def flush_paragraph() -> None:
+        nonlocal paragraph_lines
+        if paragraph_lines:
+            text = " ".join(item.strip() for item in paragraph_lines if item.strip())
+            blocks.append(f"<p>{render_inline_markup(text, data, campaign_id)}</p>")
+            paragraph_lines = []
+
+    def flush_list() -> None:
+        nonlocal list_items
+        if list_items:
+            rendered = "".join(f"<li>{item}</li>" for item in list_items)
+            blocks.append(f"<ul>{rendered}</ul>")
+            list_items = []
+
+    def flush_ordered_list() -> None:
+        nonlocal ordered_list_items
+        if ordered_list_items:
+            rendered = "".join(f"<li>{item}</li>" for item in ordered_list_items)
+            blocks.append(f"<ol>{rendered}</ol>")
+            ordered_list_items = []
+
+    def flush_blockquote() -> None:
+        nonlocal blockquote_lines
+        if blockquote_lines:
+            text = " ".join(item.strip() for item in blockquote_lines if item.strip())
+            blocks.append(f"<blockquote><p>{render_inline_markup(text, data, campaign_id)}</p></blockquote>")
+            blockquote_lines = []
+
+    for raw_line in lines:
+        stripped = raw_line.strip()
+        if not stripped:
+            flush_paragraph()
+            flush_list()
+            flush_ordered_list()
+            flush_blockquote()
+            continue
+
+        media_match = MEDIA_BLOCK_PATTERN.match(stripped)
+        if media_match:
+            flush_paragraph()
+            flush_list()
+            flush_ordered_list()
+            flush_blockquote()
+            blocks.append(render_media_block(media_match.group(1).strip()))
+            continue
+
+        if stripped in {"---", "***"}:
+            flush_paragraph()
+            flush_list()
+            flush_ordered_list()
+            flush_blockquote()
+            blocks.append('<hr class="markdown-rule" />')
+            continue
+
+        if stripped.startswith("### "):
+            flush_paragraph()
+            flush_list()
+            flush_ordered_list()
+            flush_blockquote()
+            blocks.append(f"<h4>{render_inline_markup(stripped[4:], data, campaign_id)}</h4>")
+            continue
+        if stripped.startswith("## "):
+            flush_paragraph()
+            flush_list()
+            flush_ordered_list()
+            flush_blockquote()
+            blocks.append(f"<h3>{render_inline_markup(stripped[3:], data, campaign_id)}</h3>")
+            continue
+        if stripped.startswith("# "):
+            flush_paragraph()
+            flush_list()
+            flush_ordered_list()
+            flush_blockquote()
+            blocks.append(f"<h2>{render_inline_markup(stripped[2:], data, campaign_id)}</h2>")
+            continue
+        if stripped.startswith("> "):
+            flush_paragraph()
+            flush_list()
+            flush_ordered_list()
+            blockquote_lines.append(stripped[2:])
+            continue
+        if stripped.startswith("- ") or stripped.startswith("* "):
+            flush_paragraph()
+            flush_ordered_list()
+            flush_blockquote()
+            list_items.append(render_inline_markup(stripped[2:], data, campaign_id))
+            continue
+        if ORDERED_LIST_PATTERN.match(stripped):
+            flush_paragraph()
+            flush_list()
+            flush_blockquote()
+            ordered_list_items.append(render_inline_markup(ORDERED_LIST_PATTERN.sub("", stripped, count=1), data, campaign_id))
+            continue
+
+        flush_list()
+        flush_ordered_list()
+        flush_blockquote()
+        paragraph_lines.append(stripped)
+
+    flush_paragraph()
+    flush_list()
+    flush_ordered_list()
+    flush_blockquote()
+    return "\n".join(blocks) if blocks else "<p>No article content has been added yet.</p>"
+
+
+def build_related_wiki_pages(
+    data: dict[str, list[dict[str, Any]]],
+    campaign_id: str,
+    current_page_id: str,
+    *,
+    user: dict[str, Any] | None = None,
+    limit: int = 6,
+) -> list[dict[str, Any]]:
+    viewer = user or getattr(g, "user", None)
+    pages = [
+        page
+        for page in get_campaign_wiki_pages(data, campaign_id)
+        if page["id"] != current_page_id and (viewer is None or can_user_view_world_page(data, viewer, page))
+    ]
+    pages.sort(key=lambda page: (page.get("source", ""), page.get("title", "").lower()))
+    return pages[:limit]
+
+
+def get_active_campaign_for_user(data: dict[str, list[dict[str, Any]]], user: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not user:
+        return None
+    if user["role"] == "dm":
+        return get_active_dm_campaign(data, user["id"])
+    membership = get_active_player_membership(data, user["id"])
+    if membership is None:
+        return None
+    return get_campaign_by_id(data, membership["campaign_id"])
+
+
 def get_visible_notes_for_player(
     data: dict[str, list[dict[str, Any]]], campaign_id: str, user_id: str
 ) -> list[dict[str, Any]]:
@@ -377,11 +684,13 @@ def build_campaign_feed_items(
                 "title": item["title"],
                 "body": item["body"],
                 "wiki_page_id": item.get("wiki_page_id"),
+                "world_category": item.get("world_category", ""),
                 "author_name": "Dungeon Master",
                 "author_user_id": item.get("author_user_id"),
                 "target_user_ids": item.get("target_user_ids") or ([] if not item.get("target_user_id") else [item["target_user_id"]]),
                 "visibility": None,
                 "created_at": item.get("created_at", ""),
+                "rendered_body": render_wiki_markup(item.get("body", ""), data, campaign_id),
             }
         )
 
@@ -399,6 +708,7 @@ def build_campaign_feed_items(
                 "author_user_id": note.get("author_user_id"),
                 "visibility": note.get("visibility", "private"),
                 "created_at": note.get("created_at", ""),
+                "rendered_body": render_wiki_markup(note.get("body", ""), data, campaign_id),
             }
         )
 
@@ -410,6 +720,56 @@ def user_can_access_campaign(data: dict[str, list[dict[str, Any]]], user: dict[s
         campaign = get_campaign_by_id(data, campaign_id)
         return campaign is not None and campaign["dm_user_id"] == user["id"]
     return get_membership(data, campaign_id, user["id"]) is not None
+
+
+def can_user_view_world_page(
+    data: dict[str, list[dict[str, Any]]],
+    user: dict[str, Any],
+    page: dict[str, Any],
+) -> bool:
+    if not user_can_access_campaign(data, user, page["campaign_id"]):
+        return False
+
+    if user["role"] == "dm":
+        return True
+
+    status = str(page.get("status", "published")).strip().lower()
+    if status != "published":
+        return False
+
+    visibility = str(page.get("visibility", "all_players")).strip().lower()
+    if visibility == "dm_only":
+        return False
+    if visibility == "selected_players":
+        return user["id"] in {str(item) for item in page.get("visible_user_ids", [])}
+    return True
+
+
+def get_visible_campaign_wiki_pages(
+    data: dict[str, list[dict[str, Any]]],
+    campaign_id: str,
+    user: dict[str, Any],
+) -> list[dict[str, Any]]:
+    return [
+        page
+        for page in get_campaign_wiki_pages(data, campaign_id)
+        if can_user_view_world_page(data, user, page)
+    ]
+
+
+def get_world_page_visible_names(
+    data: dict[str, list[dict[str, Any]]],
+    campaign_id: str,
+    user_ids: list[str] | None,
+) -> list[str]:
+    wanted = {str(item) for item in (user_ids or [])}
+    if not wanted:
+        return []
+    names: list[str] = []
+    for target in get_campaign_player_targets(data, campaign_id):
+        if target["user_id"] in wanted:
+            names.append(f"{target['display_name']} · {target['character_name']}")
+    return names
 
 
 def get_visible_broadcasts_for_player(
@@ -470,6 +830,583 @@ def get_active_player_membership(data: dict[str, list[dict[str, Any]]], user_id:
     return memberships[0]
 
 
+def get_world_category_definitions() -> list[dict[str, str]]:
+    return [
+        {
+            "key": "gods",
+            "label": "Gods & Deities",
+            "eyebrow": "Pantheon",
+            "heading": "Gods, Saints, and Divine Powers",
+            "description": "The divine forces, celestial patrons, and sacred figures that shape the setting.",
+        },
+        {
+            "key": "places",
+            "label": "Places",
+            "eyebrow": "Atlas",
+            "heading": "Regions, Realms, and Settlements",
+            "description": "Continents, cities, islands, and other landmarks that define the world map.",
+        },
+        {
+            "key": "factions",
+            "label": "Factions",
+            "eyebrow": "Power Blocs",
+            "heading": "Organizations, Orders, and Alliances",
+            "description": "Political groups, magical councils, churches, and other powers moving across the setting.",
+        },
+        {
+            "key": "people",
+            "label": "People",
+            "eyebrow": "Dossiers",
+            "heading": "Characters and Notable Figures",
+            "description": "Important individuals, public profiles, and character-centered world entries.",
+        },
+        {
+            "key": "flora-fauna",
+            "label": "Flora & Fauna",
+            "eyebrow": "Natural World",
+            "heading": "Beasts, Creatures, and Wild Growth",
+            "description": "Bestiary-style entries, rare creatures, and notable natural life across the setting.",
+        },
+        {
+            "key": "history",
+            "label": "History",
+            "eyebrow": "Chronicle",
+            "heading": "Timelines, Ages, and Major Events",
+            "description": "Past ages, turning points, wars, disasters, and historical context for the campaign world.",
+        },
+        {
+            "key": "culture",
+            "label": "Culture",
+            "eyebrow": "Peoples",
+            "heading": "Peoples, Customs, and Shared Identity",
+            "description": "Races, customs, traditions, social groups, and the cultures that make the world feel lived in.",
+        },
+        {
+            "key": "misc",
+            "label": "Misc",
+            "eyebrow": "Archive",
+            "heading": "Unsorted and Miscellaneous Entries",
+            "description": "Useful world entries that do not yet fit a more specific shelf in the atlas.",
+        },
+    ]
+
+
+def get_world_category_options() -> list[dict[str, str]]:
+    return [{"key": item["key"], "label": item["label"]} for item in get_world_category_definitions() if item["key"] != "misc"]
+
+
+def get_world_editor_preview_specs() -> dict[str, Any]:
+    shared_sections = [
+        {
+            "title": "Identity",
+            "description": "The baseline information every World Atlas entry should carry.",
+            "fields": [
+                {"label": "Entry Title", "type": "text", "value": "Aegis"},
+                {"label": "Subtitle / Tagline", "type": "text", "value": "The Shieldbearer"},
+                {"label": "World Atlas Section", "type": "select", "value": "Gods & Deities"},
+                {"label": "Summary", "type": "textarea", "value": "A short overview that explains why this entry matters at a glance."},
+            ],
+        },
+        {
+            "title": "Presentation",
+            "description": "Fields that shape how the entry appears across the atlas.",
+            "fields": [
+                {"label": "Cover Image URL", "type": "text", "value": "https://example.com/world-entry-cover.jpg"},
+                {"label": "Gallery / Attachments", "type": "text", "value": "Drag in maps, portraits, handouts, or linked media."},
+                {"label": "Related Entries", "type": "text", "value": "[[The Divine Pantheon of Aetheria]], [[Celestia]]"},
+                {"label": "Tags", "type": "text", "value": "pantheon, shield, divine order"},
+            ],
+        },
+        {
+            "title": "Publication",
+            "description": "Controls for authorship, visibility, and how the entry enters the canon.",
+            "fields": [
+                {"label": "Visibility", "type": "select", "value": "Visible To Campaign"},
+                {"label": "Source", "type": "select", "value": "DM Atlas Editor"},
+                {"label": "Canon Status", "type": "select", "value": "Official"},
+                {"label": "Entry Body", "type": "textarea", "value": "# Overview\nUse the full editor for the rich article body, crosslinks, media, and structured sections."},
+            ],
+        },
+    ]
+
+    categories = [
+        {
+            "key": "gods",
+            "label": "Gods & Deities",
+            "eyebrow": "Pantheon",
+            "summary": "Divine entries focus on worship, symbolism, myths, and relationships across the heavens.",
+            "sample_title": "Aegis",
+            "groups": [
+                {
+                    "title": "Divine Identity",
+                    "fields": [
+                        {
+                            "label": "Domain / Portfolio",
+                            "type": "text",
+                            "value": "Protection, guardianship, oaths",
+                            "options": ["Protection", "War", "Light", "Death", "Storm", "Knowledge", "Nature", "Forge", "Trickery", "Fate"],
+                        },
+                        {"label": "Titles / Epithets", "type": "text", "value": "The Shieldbearer, Keeper of the Last Wall"},
+                        {"label": "Symbol", "type": "text", "value": "A gold shield crossed by a comet trail"},
+                        {
+                            "label": "Alignment / Disposition",
+                            "type": "text",
+                            "value": "Lawful Benevolent",
+                            "options": ["Lawful Benevolent", "Neutral Benevolent", "Chaotic Benevolent", "Lawful Severe", "True Neutral", "Chaotic Hostile"],
+                        },
+                    ],
+                },
+                {
+                    "title": "Worship & Myth",
+                    "fields": [
+                        {"label": "Clergy / Followers", "type": "text", "value": "Wardens, caravan guardians, oathbound knights"},
+                        {"label": "Regions Of Worship", "type": "text", "value": "Celestia, stormbreak keeps, border shrines"},
+                        {"label": "Rites / Holy Days", "type": "textarea", "value": "Night watch vigils, shield-anointing rites, oath renewals at dawn."},
+                        {"label": "Allies / Rivals", "type": "text", "value": "Allied with Aurora, opposed by Thanatos"},
+                    ],
+                },
+            ],
+        },
+        {
+            "key": "places",
+            "label": "Places",
+            "eyebrow": "Atlas",
+            "summary": "Location entries capture geography, governance, travel value, and what players will actually find there.",
+            "sample_title": "The Whispering Isles",
+            "groups": [
+                {
+                    "title": "Location Basics",
+                    "fields": [
+                        {
+                            "label": "Place Type",
+                            "type": "text",
+                            "value": "Island Chain",
+                            "options": ["Continent", "Kingdom", "City", "Village", "Island", "Island Chain", "Dungeon", "Landmark", "Plane", "District"],
+                        },
+                        {"label": "Region / Parent Location", "type": "text", "value": "Outer Maelstrom"},
+                        {"label": "Government / Controller", "type": "text", "value": "Independent city-states and tidebound houses"},
+                        {"label": "Population", "type": "text", "value": "Sparse coastal settlements and shipborne enclaves"},
+                    ],
+                },
+                {
+                    "title": "Travel & Texture",
+                    "fields": [
+                        {
+                            "label": "Climate",
+                            "type": "text",
+                            "value": "Mist-heavy, storm-prone, humid",
+                            "options": ["Arctic", "Temperate", "Tropical", "Desert", "Humid", "Storm-wracked", "Magically unstable", "Frozen", "Volcanic"],
+                        },
+                        {"label": "Landmarks", "type": "textarea", "value": "Blackglass reefs, moonlit harbors, drowned archways, whisper cliffs."},
+                        {"label": "Resources / Trade", "type": "text", "value": "Pearls, stormsalt, rare inks, drifting timber"},
+                        {"label": "Travel Notes", "type": "textarea", "value": "Safe passage requires local pilots and careful timing with the tide veils."},
+                    ],
+                },
+            ],
+        },
+        {
+            "key": "factions",
+            "label": "Factions",
+            "eyebrow": "Power Blocs",
+            "summary": "Faction entries should make their purpose, reach, and threat legible in seconds.",
+            "sample_title": "Celestial Council",
+            "groups": [
+                {
+                    "title": "Power Structure",
+                    "fields": [
+                        {
+                            "label": "Faction Type",
+                            "type": "text",
+                            "value": "Council",
+                            "options": ["Council", "Government", "Religious Order", "Mage Circle", "Mercenary Company", "Criminal Syndicate", "Merchant Guild", "Secret Society"],
+                        },
+                        {"label": "Leader", "type": "text", "value": "High Chancellor Merrow Vale"},
+                        {"label": "Headquarters", "type": "text", "value": "The Azure Citadel"},
+                        {"label": "Territory / Influence", "type": "text", "value": "Celestia, sky ports, allied bastions"},
+                    ],
+                },
+                {
+                    "title": "Goals & Reputation",
+                    "fields": [
+                        {"label": "Goals", "type": "textarea", "value": "Preserve magical order, regulate skyway access, contain the Maelstrom's expansion."},
+                        {"label": "Methods", "type": "text", "value": "Arcane law, diplomatic pressure, sanctioned expeditionary forces"},
+                        {
+                            "label": "Public Reputation",
+                            "type": "text",
+                            "value": "Necessary, distant, increasingly feared",
+                            "options": ["Beloved", "Respected", "Necessary", "Distrusted", "Feared", "Hated"],
+                        },
+                        {"label": "Allies / Enemies", "type": "text", "value": "Allied with the Council of Archmages, tense with independent sky captains"},
+                    ],
+                },
+            ],
+        },
+        {
+            "key": "people",
+            "label": "People",
+            "eyebrow": "Dossiers",
+            "summary": "People entries should balance fast dossier facts with enough texture for roleplay.",
+            "sample_title": "Captain Ilyra Thorn",
+            "groups": [
+                {
+                    "title": "Public Profile",
+                    "fields": [
+                        {"label": "Full Name", "type": "text", "value": "Captain Ilyra Thorn"},
+                        {"label": "Aliases / Titles", "type": "text", "value": "The Reef Hawk"},
+                        {"label": "Species", "type": "text", "value": "High Elf"},
+                        {"label": "Role / Class", "type": "text", "value": "Skyship captain, rogue-adjacent fixer"},
+                    ],
+                },
+                {
+                    "title": "Story Hooks",
+                    "fields": [
+                        {"label": "Faction Affiliation", "type": "text", "value": "Independent, former Celestial Council courier"},
+                        {
+                            "label": "Status",
+                            "type": "text",
+                            "value": "Alive / Active",
+                            "options": ["Alive / Active", "Missing", "Dead", "Unknown", "Retired", "Imprisoned"],
+                        },
+                        {"label": "Goals / Motivations", "type": "textarea", "value": "Clear old debts, protect her crew, uncover the truth behind the drowned route logs."},
+                        {"label": "Relationships / Secrets", "type": "textarea", "value": "Still smuggles messages for a council contact she swore she cut ties with."},
+                    ],
+                },
+            ],
+        },
+        {
+            "key": "flora-fauna",
+            "label": "Flora & Fauna",
+            "eyebrow": "Natural World",
+            "summary": "Creature and plant entries should help a DM run encounters, ecology, and discovery.",
+            "sample_title": "Tempest Bloom",
+            "groups": [
+                {
+                    "title": "Creature / Plant Profile",
+                    "fields": [
+                        {
+                            "label": "Entry Type",
+                            "type": "text",
+                            "value": "Magical Flora",
+                            "options": ["Beast", "Monster", "Plant", "Fungus", "Construct", "Celestial", "Fiend", "Magical Flora", "Magical Phenomenon"],
+                        },
+                        {"label": "Habitat", "type": "text", "value": "Cliff edges along storm channels"},
+                        {"label": "Temperament / Behavior", "type": "text", "value": "Dormant until charged by lightning"},
+                        {
+                            "label": "Threat Level",
+                            "type": "text",
+                            "value": "Low To Moderate",
+                            "options": ["Harmless", "Low", "Low To Moderate", "Moderate", "High", "Deadly"],
+                        },
+                    ],
+                },
+                {
+                    "title": "Use In Play",
+                    "fields": [
+                        {"label": "Ecology / Diet", "type": "text", "value": "Feeds on ambient arcana and static charge"},
+                        {"label": "Uses", "type": "text", "value": "Potion catalyst, ritual focus, sky-sail insulation"},
+                        {"label": "Variants", "type": "text", "value": "Blueglass bloom, bloodstorm bloom"},
+                        {"label": "Encounter Notes", "type": "textarea", "value": "Harvesting without grounding tools risks a volatile discharge."},
+                    ],
+                },
+            ],
+        },
+        {
+            "key": "history",
+            "label": "History",
+            "eyebrow": "Chronicle",
+            "summary": "Historical entries should anchor events in time, place, cause, and consequence.",
+            "sample_title": "The Fracture Of The Seventh Skyway",
+            "groups": [
+                {
+                    "title": "Event Framework",
+                    "fields": [
+                        {
+                            "label": "Event Type",
+                            "type": "text",
+                            "value": "Disaster",
+                            "options": ["Disaster", "War", "Founding", "Coronation", "Schism", "Discovery", "Migration", "Age Transition"],
+                        },
+                        {"label": "Date / Era", "type": "text", "value": "Third Tempest Age, 417 A.M."},
+                        {"label": "Location", "type": "text", "value": "The Azure Citadel and surrounding skyways"},
+                        {"label": "Key Figures", "type": "text", "value": "Archmage Solenne, the Council's tidewrights"},
+                    ],
+                },
+                {
+                    "title": "Impact",
+                    "fields": [
+                        {"label": "Cause", "type": "textarea", "value": "An overdrawn ward lattice collided with the Tempest Core's surge cycle."},
+                        {"label": "Outcome", "type": "textarea", "value": "Three skyways collapsed and trade routes were rerouted for a generation."},
+                        {"label": "Consequences", "type": "textarea", "value": "It reshaped faction power, migration, and public trust in arcane governance."},
+                        {"label": "Historical Significance", "type": "text", "value": "A turning point in Aetherian infrastructure and magical law"},
+                    ],
+                },
+            ],
+        },
+        {
+            "key": "culture",
+            "label": "Culture",
+            "eyebrow": "Peoples",
+            "summary": "Culture entries explain how people live, celebrate, believe, and interpret the world.",
+            "sample_title": "High Elves Of Celestia",
+            "groups": [
+                {
+                    "title": "Cultural Identity",
+                    "fields": [
+                        {"label": "Culture / People Name", "type": "text", "value": "High Elves of Celestia"},
+                        {"label": "Primary Regions", "type": "text", "value": "Celestia, the upper reaches, archive districts"},
+                        {"label": "Language", "type": "text", "value": "Aetheric High Speech, Common"},
+                        {"label": "Values / Beliefs", "type": "textarea", "value": "Legacy, refinement, stewardship, and the responsible shaping of magic."},
+                    ],
+                },
+                {
+                    "title": "Customs & Texture",
+                    "fields": [
+                        {"label": "Traditions", "type": "text", "value": "Sky lantern vigils, archive pledges, moonwake feasts"},
+                        {"label": "Social Structure", "type": "text", "value": "Archive houses, mage lineages, civic orders"},
+                        {"label": "Dress / Aesthetics", "type": "text", "value": "Layered silks, metal filigree, sigil embroidery"},
+                        {"label": "Customs / Taboos", "type": "textarea", "value": "Breaking an oath in public is treated as a social death wound in most circles."},
+                    ],
+                },
+            ],
+        },
+        {
+            "key": "misc",
+            "label": "Misc",
+            "eyebrow": "Archive",
+            "summary": "Misc entries stay flexible so loose ends can exist before they deserve a stricter structure.",
+            "sample_title": "Blackglass Sigil Keys",
+            "groups": [
+                {
+                    "title": "Flexible Entry Shell",
+                    "fields": [
+                        {"label": "Subtype", "type": "text", "value": "Artifact Cluster"},
+                        {"label": "Primary Use", "type": "text", "value": "Unlocks sealed routes and hidden archive chambers"},
+                        {"label": "Current Keeper", "type": "text", "value": "Unknown"},
+                        {"label": "Open Questions", "type": "textarea", "value": "Who forged them, how many exist, and why do they resonate with the Tempest Core?"},
+                    ],
+                },
+                {
+                    "title": "Notes & Crosslinks",
+                    "fields": [
+                        {"label": "Related Entries", "type": "text", "value": "[[The Maelstrom]], [[Council Of Archmages]]"},
+                        {"label": "Discovery Context", "type": "textarea", "value": "Recovered from a drowned relay under the shattered seventh skyway."},
+                        {"label": "GM Notes", "type": "textarea", "value": "Useful for foreshadowing long before the party learns the full truth."},
+                    ],
+                },
+            ],
+        },
+    ]
+
+    return {"shared_sections": shared_sections, "categories": categories}
+
+
+def editor_field_key(*parts: str) -> str:
+    cleaned_parts = []
+    for part in parts:
+        cleaned = re.sub(r"[^a-z0-9]+", "_", str(part).strip().lower()).strip("_")
+        if cleaned:
+            cleaned_parts.append(cleaned)
+    return "_".join(cleaned_parts)
+
+
+def merge_world_editor_options(
+    campaign: dict[str, Any] | None,
+    preset_key: str,
+    base_options: list[str] | None,
+) -> list[str]:
+    values: list[str] = []
+    seen: set[str] = set()
+
+    for option in base_options or []:
+        cleaned = str(option).strip()
+        if not cleaned:
+            continue
+        normalized = cleaned.lower()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        values.append(cleaned)
+
+    presets = (campaign or {}).get("world_editor_presets", {}).get(preset_key, [])
+    for option in presets:
+        cleaned = str(option).strip()
+        if not cleaned:
+            continue
+        normalized = cleaned.lower()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        values.append(cleaned)
+
+    return values
+
+
+def get_world_visibility_options() -> list[dict[str, str]]:
+    return [
+        {"value": "all_players", "label": "All Players"},
+        {"value": "selected_players", "label": "Selected Players"},
+        {"value": "dm_only", "label": "DM Only"},
+    ]
+
+
+def prepare_world_editor_category(
+    category_key: str,
+    page: dict[str, Any] | None = None,
+    campaign: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    preview = get_world_editor_preview_specs()
+    lookup = {item["key"]: item for item in preview["categories"]}
+    category = lookup.get(category_key)
+    if category is None:
+        return None
+
+    detail_lookup: dict[tuple[str, str], str] = {}
+    for group in page.get("detail_groups", []) if page else []:
+        for field in group.get("fields", []):
+            detail_lookup[(group.get("title", ""), field.get("label", ""))] = str(field.get("value", ""))
+
+    groups: list[dict[str, Any]] = []
+    for group in category["groups"]:
+        fields: list[dict[str, Any]] = []
+        for field in group["fields"]:
+            preset_key = editor_field_key(category["key"], group["title"], field["label"])
+            fields.append(
+                {
+                    **field,
+                    "name": preset_key,
+                    "preset_key": preset_key,
+                    "value": detail_lookup.get((group["title"], field["label"]), ""),
+                    "placeholder": field.get("value", ""),
+                    "options": merge_world_editor_options(campaign, preset_key, field.get("options", [])),
+                }
+            )
+        groups.append({**group, "fields": fields})
+
+    return {**category, "groups": groups}
+
+
+def categorize_world_pages(pages: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    categories: dict[str, list[dict[str, Any]]] = {item["key"]: [] for item in get_world_category_definitions()}
+    explicit_keys = {item["key"] for item in get_world_category_definitions()}
+    uncategorized_pages: list[dict[str, Any]] = []
+
+    for page in pages:
+        explicit_category = str(page.get("world_category", "")).strip()
+        if explicit_category in explicit_keys and explicit_category != "misc":
+            categories[explicit_category].append(page)
+        else:
+            uncategorized_pages.append(page)
+
+    pages = uncategorized_pages
+    page_lookup = {page["title"]: page for page in pages}
+    pantheon_names = {
+        "The Divine Pantheon of Aetheria",
+        "Aegis", "Aquila", "Aurora", "Chronos", "Ignatius", "Lunara",
+        "Nimbus", "Ororo", "Stellaris", "Sylvana", "Terra", "Thanatos",
+    }
+    place_names = {
+        "Aetheria, Realm of the Maelstrom",
+        "Continents of Aetheria",
+        "Celestia", "Stormhold", "The Azure Citadel", "The Elysium Reach",
+        "The Maelstrom", "The Whispering Isles",
+    }
+    faction_names = {"Factions of Aetheria", "Celestial Council", "Council Of Archmages", "The Divine Pantheon"}
+    culture_names = {
+        "Races of Aetheria",
+        "Avis", "Dragonborn", "Dwarves", "Eternals", "Gnomes", "Goblins", "God",
+        "Goliaths", "Haren", "High Elves", "Humans", "Leonin", "Orcs", "Satyrs", "Shadowkin Elves",
+    }
+
+    categories["gods"].extend(page_lookup[name] for name in sorted(pantheon_names) if name in page_lookup)
+    categories["places"].extend(page_lookup[name] for name in sorted(place_names) if name in page_lookup)
+    categories["factions"].extend(page_lookup[name] for name in sorted(faction_names) if name in page_lookup)
+    categories["people"].extend(
+        sorted(
+            [page for page in pages if page.get("source") == "character_profile"],
+            key=lambda page: page["title"].lower(),
+        )
+    )
+    categories["culture"].extend(page_lookup[name] for name in sorted(culture_names) if name in page_lookup)
+
+    used_titles = set()
+    for items in categories.values():
+        used_titles.update(page["title"] for page in items)
+    categories["misc"].extend(sorted(
+        [page for page in pages if page["title"] not in used_titles],
+        key=lambda page: page["title"].lower(),
+    ))
+    for key, items in categories.items():
+        categories[key] = sorted(items, key=lambda page: page["title"].lower())
+    return categories
+
+
+def build_world_entry_subheading(page: dict[str, Any]) -> str:
+    explicit = str(page.get("subtitle", "")).strip()
+    if explicit:
+        return explicit
+
+    content = str(page.get("content", "")).strip()
+    if not content:
+        return ""
+
+    for line in content.splitlines():
+        cleaned = line.strip().lstrip("#").strip()
+        if cleaned and cleaned.lower() != str(page.get("title", "")).strip().lower():
+            return cleaned[:88] + ("..." if len(cleaned) > 88 else "")
+    return ""
+
+
+def decorate_world_entries(
+    data: dict[str, list[dict[str, Any]]],
+    pages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    decorated: list[dict[str, Any]] = []
+    for page in pages:
+        membership = get_membership_by_id(data, page.get("membership_id", "")) if page.get("membership_id") else None
+        image_url = ""
+        if membership and membership.get("portrait_url"):
+            image_url = membership["portrait_url"]
+        elif page.get("image_url"):
+            image_url = str(page["image_url"]).strip()
+
+        decorated.append(
+            {
+                **page,
+                "image_url": image_url,
+                "subheading": build_world_entry_subheading(page),
+                "initial": (page.get("title", "?") or "?")[0].upper(),
+            }
+        )
+    return decorated
+
+
+def build_world_sidebar_nav(
+    data: dict[str, list[dict[str, Any]]],
+    campaign: dict[str, Any] | None,
+    user: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if not campaign or not user:
+        return []
+
+    pages = get_visible_campaign_wiki_pages(data, campaign["id"], user)
+    categories = categorize_world_pages(pages)
+    nav_items: list[dict[str, Any]] = []
+    can_create = user.get("role") == "dm" and campaign.get("dm_user_id") == user.get("id")
+
+    for spec in get_world_category_definitions():
+        count = len(categories.get(spec["key"], []))
+        nav_items.append(
+            {
+                "key": spec["key"],
+                "label": spec["label"],
+                "count": count,
+                "href": url_for("world_category", category_key=spec["key"]),
+                "editor_href": url_for("world_editor", category_key=spec["key"]) if can_create else "",
+            }
+        )
+    return nav_items
+
+
 @app.before_request
 def load_current_user() -> None:
     data = load_data()
@@ -483,6 +1420,8 @@ def inject_globals() -> dict[str, Any]:
     active_sidebar_campaign: dict[str, Any] | None = None
     active_sidebar_membership: dict[str, Any] | None = None
     drawer_character_notes: list[dict[str, Any]] = []
+    sidebar_body_mode = "default"
+    world_sidebar_nav: list[dict[str, Any]] = []
 
     if g.user:
         data = load_data()
@@ -509,12 +1448,18 @@ def inject_globals() -> dict[str, Any]:
                     reversed(get_character_notes(data, active_sidebar_membership["campaign_id"], g.user["id"]))
                 )
 
+        if request.endpoint in {"world_landing", "world_atlas", "world_category", "world_entry", "character_world_entry", "world_editor_preview", "world_editor"}:
+            sidebar_body_mode = "world"
+            world_sidebar_nav = build_world_sidebar_nav(data, active_sidebar_campaign, g.user)
+
     return {
         "current_user": g.user,
         "account_campaigns": account_campaigns,
         "active_sidebar_campaign": active_sidebar_campaign,
         "active_sidebar_membership": active_sidebar_membership,
         "drawer_character_notes": drawer_character_notes,
+        "sidebar_body_mode": sidebar_body_mode,
+        "world_sidebar_nav": world_sidebar_nav,
     }
 
 
@@ -607,6 +1552,14 @@ def settings():
     return render_template("settings.html")
 
 
+@app.route("/formatting-help")
+def formatting_help():
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+    return render_template("formatting_help.html")
+
+
 @app.route("/campaigns")
 def campaigns_page():
     redirect_response = require_login()
@@ -695,21 +1648,264 @@ def leave_campaign(campaign_id: str):
 
 @app.route("/wiki")
 def wiki_index():
+    return redirect(url_for("world_landing"))
+
+
+@app.route("/world")
+def world_landing():
     redirect_response = require_login()
     if redirect_response:
         return redirect_response
 
     data = load_data()
-    campaign = None
-    if g.user["role"] == "dm":
-        campaign = get_active_dm_campaign(data, g.user["id"])
-    else:
-        membership = get_active_player_membership(data, g.user["id"])
-        if membership is not None:
-            campaign = get_campaign_by_id(data, membership["campaign_id"])
+    campaign = get_active_campaign_for_user(data, g.user)
+    pages = get_visible_campaign_wiki_pages(data, campaign["id"], g.user) if campaign else []
+    return render_template(
+        "world_landing.html",
+        pages=decorate_world_entries(data, pages),
+        campaign=campaign,
+    )
 
-    pages = get_campaign_wiki_pages(data, campaign["id"]) if campaign else []
-    return render_template("wiki_index.html", pages=pages, campaign=campaign)
+
+@app.route("/codex")
+def codex_landing():
+    return redirect(url_for("world_landing"))
+
+
+@app.route("/world/atlas")
+def world_atlas():
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    campaign = get_active_campaign_for_user(data, g.user)
+    pages = get_visible_campaign_wiki_pages(data, campaign["id"], g.user) if campaign else []
+    page_lookup = {page["title"]: page for page in pages}
+    featured_page = page_lookup.get("Aetheria, Realm of the Maelstrom")
+    categories = categorize_world_pages(pages)
+
+    collection_titles = [
+        "The Divine Pantheon of Aetheria",
+        "Continents of Aetheria",
+        "Factions of Aetheria",
+        "Races of Aetheria",
+    ]
+    collections = [page_lookup[title] for title in collection_titles if title in page_lookup]
+    collection_set = {page["title"] for page in collections}
+    recent_entries = sorted(
+        [
+            page
+            for page in pages
+            if page["title"] not in collection_set
+            and page is not featured_page
+            and page.get("source") == "kanka_import"
+        ],
+        key=lambda page: page["title"].lower(),
+    )[:12]
+
+    return render_template(
+        "world_atlas.html",
+        campaign=campaign,
+        featured_page=featured_page,
+        collections=collections,
+        pantheon_entries=categories["gods"],
+        continent_entries=categories["places"],
+        faction_entries=categories["factions"],
+        race_entries=categories["culture"],
+        character_entries=categories["people"],
+        flora_fauna_entries=categories["flora-fauna"],
+        history_entries=categories["history"],
+        culture_entries=categories["culture"],
+        misc_entries=categories["misc"],
+        recent_entries=recent_entries,
+    )
+
+
+@app.route("/world/category/<category_key>")
+def world_category(category_key: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    definitions = {item["key"]: item for item in get_world_category_definitions()}
+    if category_key not in definitions:
+        flash("That world section does not exist.", "error")
+        return redirect(url_for("world_atlas"))
+
+    data = load_data()
+    campaign = get_active_campaign_for_user(data, g.user)
+    pages = get_visible_campaign_wiki_pages(data, campaign["id"], g.user) if campaign else []
+    categories = categorize_world_pages(pages)
+    category = definitions[category_key]
+    entries = decorate_world_entries(data, categories.get(category_key, []))
+    featured_entry = entries[0] if entries else None
+
+    return render_template(
+        "world_category.html",
+        campaign=campaign,
+        category=category,
+        entries=entries,
+        featured_entry=featured_entry,
+    )
+
+
+@app.route("/world/editor-preview")
+def world_editor_preview():
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    campaign = get_active_campaign_for_user(data, g.user)
+    preview = get_world_editor_preview_specs()
+    categories = preview["categories"]
+    active_category_key = request.args.get("category", categories[0]["key"] if categories else "gods").strip()
+    category_lookup = {item["key"]: item for item in categories}
+    if active_category_key not in category_lookup:
+        active_category_key = categories[0]["key"] if categories else "gods"
+
+    return render_template(
+        "world_editor_preview.html",
+        campaign=campaign,
+        shared_sections=preview["shared_sections"],
+        preview_categories=categories,
+        active_preview_category=category_lookup.get(active_category_key),
+    )
+
+
+@app.route("/world/editor/<category_key>", methods=["GET", "POST"])
+def world_editor(category_key: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+    if g.user["role"] != "dm":
+        flash("Only the DM can author World Atlas entries.", "error")
+        return redirect(url_for("world_atlas"))
+
+    data = load_data()
+    campaign = get_active_dm_campaign(data, g.user["id"])
+    if campaign is None:
+        flash("Create or switch to a campaign before authoring atlas entries.", "error")
+        return redirect(url_for("campaigns_page"))
+
+    page_id = request.args.get("page_id", "").strip() or request.form.get("page_id", "").strip()
+    page = get_wiki_page_by_id(data, page_id) if page_id else None
+    if page is not None and page.get("campaign_id") != campaign["id"]:
+        page = None
+
+    if page is not None and page.get("world_category") in {item["key"] for item in get_world_category_definitions()}:
+        category_key = page.get("world_category", category_key)
+
+    category = prepare_world_editor_category(category_key, page, campaign)
+    if category is None:
+        flash("That World Atlas section does not exist.", "error")
+        return redirect(url_for("world_atlas"))
+
+    player_targets = get_campaign_player_targets(data, campaign["id"])
+    visibility_options = get_world_visibility_options()
+    selected_user_ids = set(str(item) for item in (page.get("visible_user_ids", []) if page else []))
+
+    form_values = {
+        "title": page.get("title", "") if page else "",
+        "subtitle": page.get("subtitle", "") if page else "",
+        "summary": page.get("summary", "") if page else "",
+        "image_url": page.get("image_url", "") if page else "",
+        "tags": page.get("tags", "") if page else "",
+        "related_entry_titles": page.get("related_entry_titles", "") if page else "",
+        "body": page.get("content", "") if page else "",
+        "visibility": page.get("visibility", "all_players") if page else "all_players",
+    }
+
+    if request.method == "POST":
+        form_values = {
+            "title": request.form.get("title", "").strip(),
+            "subtitle": request.form.get("subtitle", "").strip(),
+            "summary": request.form.get("summary", "").strip(),
+            "image_url": request.form.get("image_url", "").strip(),
+            "tags": request.form.get("tags", "").strip(),
+            "related_entry_titles": request.form.get("related_entry_titles", "").strip(),
+            "body": request.form.get("body", "").strip(),
+            "visibility": request.form.get("visibility", "all_players").strip(),
+        }
+        if form_values["visibility"] not in {item["value"] for item in visibility_options}:
+            form_values["visibility"] = "all_players"
+
+        selected_user_ids = {
+            target["user_id"]
+            for target in player_targets
+            if target["user_id"] in request.form.getlist("visible_user_ids")
+        }
+
+        detail_groups: list[dict[str, Any]] = []
+        campaign.setdefault("world_editor_presets", {})
+        for group in category["groups"]:
+            saved_fields: list[dict[str, str]] = []
+            for field in group["fields"]:
+                value = request.form.get(field["name"], "").strip()
+                field["value"] = value
+                if value and field.get("options"):
+                    existing_options = {str(item).strip().lower() for item in field["options"]}
+                    if value.lower() not in existing_options:
+                        stored = campaign["world_editor_presets"].setdefault(field["preset_key"], [])
+                        if value.lower() not in {str(item).strip().lower() for item in stored}:
+                            stored.append(value)
+                if value:
+                    saved_fields.append({"label": field["label"], "value": value})
+            if saved_fields:
+                detail_groups.append({"title": group["title"], "fields": saved_fields})
+
+        action = request.form.get("submit_action", "draft").strip().lower()
+        status = "published" if action == "publish" else "draft"
+
+        if not form_values["title"]:
+            flash("Entry title is required.", "error")
+        elif not form_values["body"]:
+            flash("Entry body is required.", "error")
+        else:
+            target_page = page
+            if target_page is None:
+                target_page = {
+                    "id": str(uuid.uuid4()),
+                    "campaign_id": campaign["id"],
+                    "source": "atlas_editor",
+                }
+                data["wiki_pages"].append(target_page)
+
+            target_page.update(
+                {
+                    "title": form_values["title"],
+                    "subtitle": form_values["subtitle"],
+                    "summary": form_values["summary"],
+                    "image_url": form_values["image_url"],
+                    "tags": form_values["tags"],
+                    "related_entry_titles": form_values["related_entry_titles"],
+                    "content": form_values["body"],
+                    "world_category": category["key"],
+                    "detail_groups": detail_groups,
+                    "visibility": form_values["visibility"],
+                    "visible_user_ids": sorted(selected_user_ids) if form_values["visibility"] == "selected_players" else [],
+                    "status": status,
+                    "updated_at": now_iso(),
+                }
+            )
+            if "created_at" not in target_page:
+                target_page["created_at"] = now_iso()
+
+            save_data(data)
+            flash("World Atlas entry published." if status == "published" else "World Atlas draft saved.", "success")
+            return redirect(url_for("world_entry", page_id=target_page["id"]))
+
+    return render_template(
+        "world_editor.html",
+        campaign=campaign,
+        category=category,
+        page=page,
+        form_values=form_values,
+        player_targets=player_targets,
+        selected_visible_user_ids=selected_user_ids,
+        visibility_options=visibility_options,
+    )
 
 
 @app.route("/campaigns/switch", methods=["POST"])
@@ -784,6 +1980,10 @@ def dm_dashboard():
                 target_user_ids = [value for value in request.form.getlist("target_user_ids") if value.strip()]
                 wiki_page_id = request.form.get("wiki_page_id", "").strip() or None
                 auto_create_wiki = request.form.get("auto_create_wiki", "").strip() == "true"
+                world_category = request.form.get("world_category", "").strip()
+                allowed_world_categories = {item["key"] for item in get_world_category_options()}
+                if world_category not in allowed_world_categories:
+                    world_category = ""
                 if not title or not body:
                     flash("Announcement title and body are required.", "error")
                 else:
@@ -814,10 +2014,15 @@ def dm_dashboard():
                                 "title": title,
                                 "content": body,
                                 "source": "dm_broadcast",
+                                "world_category": world_category,
                             }
                             data["wiki_pages"].append(page)
                             wiki_page_id = page["id"]
                         elif page is not None:
+                            page["title"] = title
+                            page["content"] = body
+                            if world_category:
+                                page["world_category"] = world_category
                             wiki_page_id = page["id"]
                     elif kind == "Quest":
                         if existing_broadcast and existing_broadcast.get("wiki_page_id"):
@@ -833,6 +2038,7 @@ def dm_dashboard():
                                     "title": title,
                                     "content": body,
                                     "source": "quest_broadcast",
+                                    "world_category": "misc",
                                 }
                                 data["wiki_pages"].append(page)
                                 wiki_page_id = page["id"]
@@ -843,6 +2049,7 @@ def dm_dashboard():
                                 "title": title,
                                 "content": body,
                                 "source": "quest_broadcast",
+                                "world_category": "misc",
                             }
                             data["wiki_pages"].append(page)
                             wiki_page_id = page["id"]
@@ -854,6 +2061,7 @@ def dm_dashboard():
                         existing_broadcast["target_user_ids"] = target_user_ids
                         existing_broadcast["target_user_id"] = target_user_ids[0] if len(target_user_ids) == 1 else None
                         existing_broadcast["wiki_page_id"] = wiki_page_id
+                        existing_broadcast["world_category"] = world_category if kind == "Lore" else ""
                     else:
                         data["announcements"].append(
                             {
@@ -866,6 +2074,7 @@ def dm_dashboard():
                                 "target_user_ids": target_user_ids,
                                 "target_user_id": target_user_ids[0] if len(target_user_ids) == 1 else None,
                                 "wiki_page_id": wiki_page_id,
+                                "world_category": world_category if kind == "Lore" else "",
                                 "created_at": now_iso(),
                             }
                         )
@@ -984,6 +2193,7 @@ def dm_dashboard():
                     "accepted_count": len(accepted_user_ids),
                     "accepted_names": [player_name_lookup[user_id] for user_id in accepted_user_ids if user_id in player_name_lookup],
                     "is_accepted": bool(accepted_user_ids),
+                    "rendered_body": render_wiki_markup(quest.get("body", ""), fresh, campaign["id"]),
                 }
             )
 
@@ -997,6 +2207,7 @@ def dm_dashboard():
         notes=notes,
         campaign_feed=campaign_feed,
         wiki_pages=wiki_pages,
+        world_category_options=get_world_category_options(),
         player_targets=player_targets,
         quests=quests,
         quest_rows=quest_rows,
@@ -1018,7 +2229,13 @@ def player_home():
         return redirect(url_for("join_campaign"))
 
     campaign = get_campaign_by_id(data, membership["campaign_id"])
-    announcements = list(reversed(get_visible_broadcasts_for_player(data, membership["campaign_id"], g.user["id"])))
+    announcements = [
+        {
+            **item,
+            "rendered_body": render_wiki_markup(item.get("body", ""), data, membership["campaign_id"]),
+        }
+        for item in reversed(get_visible_broadcasts_for_player(data, membership["campaign_id"], g.user["id"]))
+    ]
     notes = list(reversed(get_visible_notes_for_player(data, membership["campaign_id"], g.user["id"])))
     campaign_feed = build_campaign_feed_items(data, membership["campaign_id"], user_id=g.user["id"])
     quests = list(reversed(get_campaign_quests(data, membership["campaign_id"])))
@@ -1218,29 +2435,193 @@ def character_page(membership_id: str):
     campaign = get_campaign_by_id(data, membership["campaign_id"])
     character_user = get_user_by_id(data, membership["user_id"])
     character_notes = list(reversed(get_character_notes(data, membership["campaign_id"], membership["user_id"])))
+    rendered_character_notes = [
+        {
+            **item,
+            "rendered_body": render_wiki_markup(item.get("body", ""), data, membership["campaign_id"]),
+        }
+        for item in character_notes
+    ]
     return render_template(
         "character_page.html",
         campaign=campaign,
         membership=membership,
         character_user=character_user,
-        character_notes=character_notes,
+        character_notes=rendered_character_notes,
+    )
+
+
+@app.route("/character/<membership_id>/sheet")
+def character_sheet_alt(membership_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    membership = get_membership_by_id(data, membership_id)
+    if membership is None or not user_can_access_campaign(data, g.user, membership["campaign_id"]):
+        flash("That character sheet is not available to your account.", "error")
+        return redirect(url_for("home"))
+
+    campaign = get_campaign_by_id(data, membership["campaign_id"])
+    character_user = get_user_by_id(data, membership["user_id"])
+    survey = next(
+        (
+            item
+            for item in data["surveys"]
+            if item["campaign_id"] == membership["campaign_id"] and item["user_id"] == membership["user_id"]
+        ),
+        None,
+    )
+    can_manage = g.user["role"] == "dm" or g.user["id"] == membership["user_id"]
+    can_edit_sheet = g.user["role"] == "player" and g.user["id"] == membership["user_id"]
+    all_character_notes = list(reversed(get_character_notes(data, membership["campaign_id"], membership["user_id"])))
+    visible_character_notes = (
+        all_character_notes
+        if can_manage
+        else [item for item in all_character_notes if item.get("visibility", "private") == "shared"]
+    )
+    rendered_character_notes = [
+        {
+            **item,
+            "rendered_body": render_wiki_markup(item.get("body", ""), data, membership["campaign_id"]),
+        }
+        for item in visible_character_notes
+    ]
+    quick_actions = [
+        {"name": "Attack", "detail": "Make one weapon or spell attack."},
+        {"name": "Dash", "detail": "Gain extra movement this turn."},
+        {"name": "Disengage", "detail": "Move without provoking opportunity attacks."},
+        {"name": "Dodge", "detail": "Attackers have disadvantage until your next turn."},
+        {"name": "Help", "detail": "Grant advantage to an ally or aid a task."},
+        {"name": "Hide", "detail": "Attempt to become unseen."},
+        {"name": "Ready", "detail": "Prepare an action for a trigger."},
+        {"name": "Search", "detail": "Look for hidden threats or clues."},
+        {"name": "Use an Object", "detail": "Interact with gear beyond the free object interaction."},
+    ]
+    return render_template(
+        "character_page_alt.html",
+        campaign=campaign,
+        membership=membership,
+        character_user=character_user,
+        survey=survey,
+        can_manage=can_manage,
+        can_edit_sheet=can_edit_sheet,
+        ability_cells=build_ability_cells(membership),
+        notable_proficiencies=build_summary_notable_proficiencies(membership.get("notable_proficiencies")),
+        death_save_successes=parse_counter(membership.get("death_save_successes", "0")),
+        death_save_failures=parse_counter(membership.get("death_save_failures", "0")),
+        character_notes=rendered_character_notes,
+        quick_actions=quick_actions,
+        rendered_story_hook=render_wiki_markup(
+            survey.story_hook if survey and survey.story_hook else membership.character_notes or "No character hook has been written yet.",
+            data,
+            membership["campaign_id"],
+        ),
+        rendered_character_notes_text=render_wiki_markup(
+            membership.character_notes or "No character notes have been added yet.",
+            data,
+            membership["campaign_id"],
+        ),
+        rendered_dream_campaign=render_wiki_markup(
+            survey.raw_responses.dream_campaign if survey and survey.raw_responses and survey.raw_responses.dream_campaign else "No dream campaign note has been added yet.",
+            data,
+            membership["campaign_id"],
+        ),
+        rendered_expectation_notes=render_wiki_markup(
+            survey.raw_responses.expectation_notes if survey and survey.raw_responses and survey.raw_responses.expectation_notes else "No extra campaign expectations have been shared yet.",
+            data,
+            membership["campaign_id"],
+        ),
+        rendered_player_spotlight=render_wiki_markup(
+            survey.raw_responses.player_note if survey and survey.raw_responses and survey.raw_responses.player_note else "No player preference note has been added yet.",
+            data,
+            membership["campaign_id"],
+        ),
+    )
+
+
+@app.route("/character/<membership_id>/codex")
+def character_codex(membership_id: str):
+    return redirect(url_for("character_world_entry", membership_id=membership_id))
+
+
+@app.route("/character/<membership_id>/world")
+def character_world_entry(membership_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    membership = get_membership_by_id(data, membership_id)
+    if membership is None or not user_can_access_campaign(data, g.user, membership["campaign_id"]):
+        flash("That character world entry is not available to your account.", "error")
+        return redirect(url_for("home"))
+
+    page = get_wiki_page_by_id(data, membership.get("wiki_page_id", ""))
+    if page is None:
+        flash("This character does not have a world entry yet.", "error")
+        return redirect(url_for("character_page", membership_id=membership_id))
+    if not can_user_view_world_page(data, g.user, page):
+        flash("That character world entry is not available to your account.", "error")
+        return redirect(url_for("character_page", membership_id=membership_id))
+
+    campaign = get_campaign_by_id(data, membership["campaign_id"])
+    character_user = get_user_by_id(data, membership["user_id"])
+    related_pages = build_related_wiki_pages(data, membership["campaign_id"], page["id"], user=g.user)
+    visible_names = get_world_page_visible_names(data, membership["campaign_id"], page.get("visible_user_ids", []))
+    return render_template(
+        "world_entry.html",
+        campaign=campaign,
+        page=page,
+        rendered_content=render_wiki_markup(page.get("content", ""), data, membership["campaign_id"]),
+        related_pages=related_pages,
+        visible_names=visible_names,
+        membership=membership,
+        character_user=character_user,
+        is_character_codex=True,
     )
 
 
 @app.route("/wiki/<page_id>")
 def wiki_page(page_id: str):
+    return redirect(url_for("world_entry", page_id=page_id))
+
+
+@app.route("/world/<page_id>")
+def world_entry(page_id: str):
     redirect_response = require_login()
     if redirect_response:
         return redirect_response
 
     data = load_data()
     page = get_wiki_page_by_id(data, page_id)
-    if page is None or not user_can_access_campaign(data, g.user, page["campaign_id"]):
-        flash("That wiki page is not available to your account.", "error")
+    if page is None or not can_user_view_world_page(data, g.user, page):
+        flash("That world entry is not available to your account.", "error")
         return redirect(url_for("home"))
 
     campaign = get_campaign_by_id(data, page["campaign_id"])
-    return render_template("wiki_page.html", page=page, campaign=campaign)
+    membership = get_membership_by_id(data, page.get("membership_id", "")) if page.get("membership_id") else None
+    character_user = get_user_by_id(data, membership["user_id"]) if membership else None
+    related_pages = build_related_wiki_pages(data, page["campaign_id"], page["id"], user=g.user)
+    visible_names = get_world_page_visible_names(data, page["campaign_id"], page.get("visible_user_ids", []))
+    is_character_codex = membership is not None
+    return render_template(
+        "world_entry.html",
+        campaign=campaign,
+        page=page,
+        rendered_content=render_wiki_markup(page.get("content", ""), data, page["campaign_id"]),
+        related_pages=related_pages,
+        visible_names=visible_names,
+        membership=membership,
+        character_user=character_user,
+        is_character_codex=is_character_codex,
+    )
+
+
+@app.route("/wiki/<page_id>/codex")
+def wiki_page_codex(page_id: str):
+    return redirect(url_for("world_entry", page_id=page_id))
 
 
 @app.route("/player/join", methods=["GET", "POST"])

@@ -2,6 +2,16 @@
 {% block title %}{{ membership.character_name }} | TavernKeeper{% endblock %}
 {% block app_content %}
   <section class="surface character-surface">
+    <div class="character-page-actions">
+      <a class="primary-btn" href="{{ url_for('character_sheet_alt', membership_id=membership.id) }}">Open Alternate Sheet</a>
+      {% if membership.wiki_page_id %}
+        <a class="ghost-btn" href="{{ url_for('character_world_entry', membership_id=membership.id) }}">Open World Entry</a>
+      {% endif %}
+      {% if membership.wiki_page_id %}
+        <a class="ghost-btn" href="{{ url_for('world_entry', page_id=membership.wiki_page_id) }}">Open World Entry</a>
+      {% endif %}
+    </div>
+
     <div class="character-hero">
       <div class="character-portrait-large">
         {% if membership.portrait_url %}
@@ -13,7 +23,7 @@
       <div>
         <p class="eyebrow">Character Page</p>
         <h2>{{ membership.character_name }}</h2>
-        <p class="character-subline">{{ membership.class_name }} · {{ membership.subclass }}</p>
+        <p class="character-subline">{{ membership.class_name or "Class Pending" }} - {{ membership.subclass or "Subclass Pending" }}</p>
         {% if character_user %}
           <p class="character-owner">Played by {{ character_user.display_name }}</p>
         {% endif %}
@@ -21,13 +31,13 @@
     </div>
 
     <div class="party-stat-grid character-stat-grid">
-      <div><strong>Armor Class</strong><span>{{ membership.armor_class or "—" }}</span></div>
-      <div><strong>Speed</strong><span>{{ membership.speed or "—" }}</span></div>
-      <div><strong>Passive Perception</strong><span>{{ membership.passive_perception or "—" }}</span></div>
-      <div><strong>Passive Investigation</strong><span>{{ membership.passive_investigation or "—" }}</span></div>
-      <div><strong>Passive Insight</strong><span>{{ membership.passive_insight or "—" }}</span></div>
-      <div><strong>Initiative Bonus</strong><span>{{ membership.initiative_bonus or "—" }}</span></div>
-      <div><strong>Proficiency Bonus</strong><span>{{ membership.proficiency_bonus or "—" }}</span></div>
+      <div><strong>Armor Class</strong><span>{{ membership.armor_class or "-" }}</span></div>
+      <div><strong>Speed</strong><span>{{ membership.speed or "-" }}</span></div>
+      <div><strong>Passive Perception</strong><span>{{ membership.passive_perception or "-" }}</span></div>
+      <div><strong>Passive Investigation</strong><span>{{ membership.passive_investigation or "-" }}</span></div>
+      <div><strong>Passive Insight</strong><span>{{ membership.passive_insight or "-" }}</span></div>
+      <div><strong>Initiative Bonus</strong><span>{{ membership.initiative_bonus or "-" }}</span></div>
+      <div><strong>Proficiency Bonus</strong><span>{{ membership.proficiency_bonus or "-" }}</span></div>
     </div>
   </section>
 {% endblock %}

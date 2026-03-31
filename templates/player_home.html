@@ -145,6 +145,7 @@
           </div>
         </div>
         <div class="player-character-actions">
+          <a class="primary-btn" href="{{ url_for('character_sheet_alt', membership_id=membership.id) }}">Live Sheet</a>
           <a class="primary-btn" href="{{ url_for('player_character_sheet', campaign_id=membership.campaign_id) }}">Character Sheet</a>
           <a class="ghost-btn" href="{{ url_for('character_page', membership_id=membership.id) }}">Character Page</a>
         </div>
@@ -218,7 +219,7 @@
                 <div>
                   <h4>
                     {% if item.wiki_page_id %}
-                      <a class="card-title-link" href="{{ url_for('wiki_page', page_id=item.wiki_page_id) }}">{{ item.title }}</a>
+                      <a class="card-title-link" href="{{ url_for('world_entry', page_id=item.wiki_page_id) }}">{{ item.title }}</a>
                     {% else %}
                       {{ item.title }}
                     {% endif %}
@@ -227,7 +228,7 @@
                 </div>
                 <span class="announcement-type">{{ "Accepted" if item.id in accepted_quest_ids else "Open" }}</span>
               </header>
-              <p>{{ item.body }}</p>
+              <div class="markdown-preview compact-markdown">{{ item.rendered_body|safe }}</div>
               {% if item.id not in accepted_quest_ids %}
                 <form method="post" action="{{ url_for('accept_quest', quest_id=item.id) }}" data-live-action="true">
                   <button class="ghost-btn small-button" type="submit">Accept Quest</button>
@@ -261,9 +262,9 @@
                 <div class="campaign-feed-headline">
                   <h4>
                     {% if item.kind == "Lore" and item.wiki_page_id %}
-                      <a class="card-title-link" href="{{ url_for('wiki_page', page_id=item.wiki_page_id) }}">{{ item.title }}</a>
+                      <a class="card-title-link" href="{{ url_for('world_entry', page_id=item.wiki_page_id) }}">{{ item.title }}</a>
                     {% else %}
-                      <button class="card-title-button" type="button" data-preview-title="{{ item.title }}" data-preview-body="{{ item.body }}" data-preview-kind="{{ item.kind }}">{{ item.title }}</button>
+                      <button class="card-title-button" type="button" data-preview-title="{{ item.title }}" data-preview-body-html="{{ item.rendered_body|e }}" data-preview-kind="{{ item.kind }}">{{ item.title }}</button>
                     {% endif %}
                   </h4>
                 </div>
@@ -289,7 +290,7 @@
                   </div>
                 </div>
               </header>
-              <p>{{ item.body[:180] }}{% if item.body|length > 180 %}...{% endif %}</p>
+              <div class="markdown-preview compact-markdown">{{ item.rendered_body|safe }}</div>
               <div class="broadcast-actions">
                 {% if item.kind in ["Announcement", "Hand Out", "Lore", "Quest"] %}
                   <form method="post" action="{{ url_for('add_broadcast_to_notes', broadcast_id=item.id) }}" data-live-action="true">
@@ -328,14 +329,14 @@
       let deathSaveSuccesses = Number({{ (membership.death_save_successes or '0')|int }});
       let deathSaveFailures = Number({{ (membership.death_save_failures or '0')|int }});
 
-      function renderPreviewBody(text) {
-        bodyNode.textContent = text || "";
+      function renderPreviewBody(html) {
+        bodyNode.innerHTML = html || "";
       }
 
-      function openPreview(title, kind, body) {
+      function openPreview(title, kind, bodyHtml) {
         titleNode.textContent = title || "Preview";
         kindNode.textContent = kind || "Entry";
-        renderPreviewBody(body);
+        renderPreviewBody(bodyHtml);
         overlay.hidden = false;
       }
 
@@ -348,7 +349,7 @@
           openPreview(
             button.getAttribute("data-preview-title"),
             button.getAttribute("data-preview-kind"),
-            button.getAttribute("data-preview-body")
+            button.getAttribute("data-preview-body-html")
           );
         });
       });
