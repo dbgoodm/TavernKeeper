@@ -1,44 +1,50 @@
 {% extends "base.html" %}
-{% block title %}{{ category.label }} | World Atlas | TavernKeeper{% endblock %}
+{% block title %}{{ collection.title }} | Featured Collection | TavernKeeper{% endblock %}
 {% block app_content %}
   <section class="surface codex-surface codex-landing-surface">
     <div class="codex-breadcrumbs">
       <a class="card-title-link" href="{{ url_for('world_atlas') }}">World Atlas</a>
       <span>/</span>
-      <span>{{ category.label }}</span>
+      <span>Featured Collections</span>
+      <span>/</span>
+      <span>{{ collection.title }}</span>
     </div>
 
     <div class="codex-header">
       <div class="codex-header-copy">
-        <p class="eyebrow">{{ category.eyebrow }}</p>
-        <h1>{{ category.label }}</h1>
-        <p class="survey-top-copy">{{ category.description }}</p>
+        <p class="eyebrow">Featured Collection</p>
+        <div class="card-header-inline world-inline-title">
+          <h1>{{ collection.title }}</h1>
+          {% if current_user.role == "dm" and campaign and campaign.dm_user_id == current_user.id %}
+            <a class="icon-button icon-button-link" href="{{ url_for('world_collection_edit', collection_id=collection.id) }}" aria-label="Edit {{ collection.title }}">✎</a>
+          {% endif %}
+        </div>
+        <p class="survey-top-copy">{{ collection.preview_text or "No collection preview line has been added yet." }}</p>
       </div>
       <div class="codex-header-actions">
         <a class="ghost-btn" href="{{ url_for('world_atlas') }}">Back To World Atlas</a>
-        <a class="ghost-btn" href="{{ url_for('world_landing') }}">All World Pages</a>
       </div>
     </div>
 
-    {% if featured_entry %}
-      <section class="codex-featured">
-        <p class="label">Featured {{ category.label }}</p>
-        <h2><a class="card-title-link" href="{{ url_for('world_entry', page_id=featured_entry.id) }}">{{ featured_entry.title }}</a></h2>
-        <p>{{ featured_entry.preview_text or "No atlas preview line has been added yet." }}</p>
-      </section>
-    {% endif %}
+    <section class="codex-featured world-collection-body">
+      <div class="section-heading">
+        <div>
+          <h3>Collection Overview</h3>
+        </div>
+      </div>
+      <div class="codex-article-content">{{ rendered_body|safe }}</div>
+    </section>
 
     <section class="codex-section">
       <div class="section-heading">
         <div>
-          <p class="label">{{ category.eyebrow }}</p>
-          <h3>{{ category.heading }}</h3>
+          <h3>{{ collection.pages|length }} Atlas Pages</h3>
         </div>
       </div>
 
-      {% if entries %}
-        <div class="world-entry-grid">
-          {% for page in entries %}
+      {% if collection.pages %}
+        <div class="world-entry-grid world-collection-entry-grid">
+          {% for page in collection.pages %}
             <article class="codex-card world-entry-card">
               <a class="world-entry-card-link" href="{{ url_for('world_entry', page_id=page.id) }}">
                 <div class="world-entry-card-media">
@@ -60,7 +66,7 @@
         </div>
       {% else %}
         <div class="codex-card">
-          <p class="feed-empty">No pages are available in {{ category.label }} yet.</p>
+          <p class="feed-empty">No World Atlas pages have been added to this collection yet.</p>
         </div>
       {% endif %}
     </section>

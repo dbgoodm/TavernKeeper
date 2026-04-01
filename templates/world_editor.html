@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if page %}Edit{% else %}Create{% endif %} {{ category.label }} Entry | TavernKeeper{% endblock %}
+{% block title %}{% if page %}Edit{% else %}Create{% endif %} {{ category.label }} Page | TavernKeeper{% endblock %}
 {% block app_content %}
   <section class="surface codex-surface codex-landing-surface world-editor-surface">
     <div class="codex-breadcrumbs">
@@ -7,13 +7,13 @@
       <span>/</span>
       <a class="card-title-link" href="{{ url_for('world_category', category_key=category.key) }}">{{ category.label }}</a>
       <span>/</span>
-      <span>{% if page %}Edit Entry{% else %}New Entry{% endif %}</span>
+      <span>{% if page %}Edit Page{% else %}New Page{% endif %}</span>
     </div>
 
     <div class="codex-header world-editor-header">
       <div class="codex-header-copy">
         <p class="eyebrow">{{ category.eyebrow }}</p>
-        <h1>{% if page %}Edit {{ page.title }}{% else %}Create {{ category.label }} Entry{% endif %}</h1>
+        <h1>{% if page %}Edit {{ page.title }}{% else %}Create {{ category.label }} Page{% endif %}</h1>
         <p class="survey-top-copy">{{ category.summary }}</p>
       </div>
       <div class="codex-header-actions">
@@ -31,14 +31,13 @@
           <section class="codex-card world-editor-preview-card">
             <div class="section-heading world-editor-card-heading">
               <div>
-                <p class="label">Entry Basics</p>
-                <h3>Core Entry Information</h3>
+                <h3>Core Page Information</h3>
               </div>
             </div>
 
             <div class="world-editor-field-grid">
               <label class="world-editor-field">
-                <span>Entry Title</span>
+                <span>Page Title</span>
                 <input type="text" name="title" value="{{ form_values.title }}" placeholder="{{ category.sample_title }}" />
               </label>
               <label class="world-editor-field">
@@ -46,8 +45,9 @@
                 <input type="text" name="subtitle" value="{{ form_values.subtitle }}" placeholder="Short identifying phrase" />
               </label>
               <label class="world-editor-field is-full">
-                <span>Summary</span>
-                <textarea name="summary" rows="3" placeholder="A short summary for cards, headers, and quick reference.">{{ form_values.summary }}</textarea>
+                <span>Atlas Preview Line</span>
+                <textarea name="summary" rows="3" placeholder="The short line shown on the World Atlas Portal, featured page, and collection cards.">{{ form_values.summary }}</textarea>
+                {% include "_formatting_help_link.html" %}
               </label>
               <label class="world-editor-field">
                 <span>Cover Image URL</span>
@@ -58,16 +58,16 @@
                 <input type="text" name="tags" value="{{ form_values.tags }}" placeholder="storm, divine, citadel" />
               </label>
               <label class="world-editor-field is-full">
-                <span>Related Entries</span>
+                <span>Related Pages</span>
                 <input type="text" name="related_entry_titles" value="{{ form_values.related_entry_titles }}" placeholder="[[The Divine Pantheon of Aetheria]], [[Celestia]]" />
               </label>
               <label class="world-editor-field is-full">
-                <span>Entry Body</span>
-                <textarea name="body" rows="12" placeholder="# Overview&#10;Write the full article body here with markdown, links, and media embeds.">{{ form_values.body }}</textarea>
+                <span>Page Body</span>
+                {% set toolbar_target = "worldPageBody" %}
+                {% include "_markdown_toolbar.html" %}
+                <textarea id="worldPageBody" name="body" rows="12" placeholder="# Overview&#10;Write the full article body here with markdown, links, and media embeds.">{{ form_values.body }}</textarea>
               </label>
             </div>
-
-            {% include "_formatting_help_link.html" %}
           </section>
 
           {% for group in category.groups %}
@@ -83,7 +83,9 @@
                   <label class="world-editor-field{% if field.type == 'textarea' %} is-full{% endif %}">
                     <span>{{ field.label }}</span>
                     {% if field.type == "textarea" %}
-                      <textarea name="{{ field.name }}" rows="4" placeholder="{{ field.placeholder }}">{{ field.value }}</textarea>
+                {% set toolbar_target = field.name %}
+                {% include "_markdown_toolbar.html" %}
+                <textarea id="{{ field.name }}" name="{{ field.name }}" rows="4" placeholder="{{ field.placeholder }}">{{ field.value }}</textarea>
                     {% else %}
                       <input
                         type="text"
@@ -111,17 +113,17 @@
         <aside class="world-editor-aside">
           <section class="codex-card world-editor-side-card">
             <p class="label">Publishing</p>
-            <h3>Entry State</h3>
+            <h3>Page State</h3>
             <div class="world-editor-action-stack">
               <button class="ghost-btn wide" type="submit" name="submit_action" value="draft">Save Draft</button>
               <button class="primary-btn wide" type="submit" name="submit_action" value="publish">Publish</button>
             </div>
-            <p class="world-editor-side-copy">Drafts remain DM-only. Published entries follow the visibility rules below.</p>
+            <p class="world-editor-side-copy">Drafts remain DM-only. Published pages follow the visibility rules below.</p>
           </section>
 
           <section class="codex-card world-editor-side-card">
             <p class="label">Visibility</p>
-            <h3>Who Can See This Entry</h3>
+            <h3>Who Can See This Page</h3>
             <label class="world-editor-field">
               <span>Audience</span>
               <select name="visibility" id="worldVisibilitySelect">

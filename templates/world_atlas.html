@@ -1,194 +1,344 @@
 {% extends "base.html" %}
-{% block title %}World Atlas | TavernKeeper{% endblock %}
+{% block title %}World Atlas Portal | TavernKeeper{% endblock %}
 {% block app_content %}
   <section class="surface codex-surface codex-landing-surface">
     <div class="codex-header">
       <div class="codex-header-copy">
-        <p class="eyebrow">World Atlas</p>
-        <h1>{{ campaign.name if campaign else "World Atlas" }}</h1>
-        <p class="survey-top-copy">A worldbuilding hub for lore, cultures, factions, regions, and character dossiers. This atlas gives the campaign a single place to browse the setting.</p>
+        <h1>{{ atlas_title }}</h1>
+        <p class="survey-top-copy">{{ atlas_intro }}</p>
       </div>
       <div class="codex-header-actions">
-        <a class="ghost-btn" href="{{ url_for('world_landing') }}">All World Entries</a>
+        {% if current_user.role == "dm" and campaign and campaign.dm_user_id == current_user.id %}
+          <a class="primary-btn" href="{{ url_for('world_atlas_edit') }}">Edit Portal</a>
+        {% endif %}
+        <a class="ghost-btn" href="{{ url_for('world_landing') }}">All World Pages</a>
       </div>
     </div>
 
-    {% if featured_page %}
-      <section class="codex-featured">
-        <p class="label">Featured Setting Entry</p>
-        <h2><a class="card-title-link" href="{{ url_for('world_entry', page_id=featured_page.id) }}">{{ featured_page.title }}</a></h2>
-        <p>{{ featured_page.content[:320] }}{% if featured_page.content|length > 320 %}...{% endif %}</p>
-      </section>
-    {% endif %}
-
-    {% if collections %}
-      <section class="codex-section">
-        <div class="section-heading">
-          <div>
-            <p class="label">Foundations</p>
-            <h3>Core World Collections</h3>
-          </div>
-        </div>
-        <div class="codex-collection-grid">
-          {% for page in collections %}
-            <article class="codex-card">
-              <p class="label">{{ page.source|replace("_", " ")|title }}</p>
-              <h3><a class="card-title-link" href="{{ url_for('world_entry', page_id=page.id) }}">{{ page.title }}</a></h3>
-              <p class="wiki-index-snippet">{{ page.content[:180] }}{% if page.content|length > 180 %}...{% endif %}</p>
-            </article>
-          {% endfor %}
-        </div>
-      </section>
-    {% endif %}
-
-    <div class="codex-landing-grid">
-      <section class="codex-card" id="gods">
-        <p class="label">Pantheon</p>
-        <h3>Gods & Deities</h3>
-        <div class="actions">
-          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='gods') }}">Open Section</a>
-        </div>
-        <div class="codex-related-list">
-          {% for page in pantheon_entries %}
-            <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
-              <strong>{{ page.title }}</strong>
-              <span>Deity Entry</span>
-            </a>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="codex-card" id="places">
-        <p class="label">Regions</p>
-        <h3>Continents & Realms</h3>
-        <div class="actions">
-          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='places') }}">Open Section</a>
-        </div>
-        <div class="codex-related-list">
-          {% for page in continent_entries %}
-            <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
-              <strong>{{ page.title }}</strong>
-              <span>Location Entry</span>
-            </a>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="codex-card" id="factions">
-        <p class="label">Factions</p>
-        <h3>Organizations & Powers</h3>
-        <div class="actions">
-          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='factions') }}">Open Section</a>
-        </div>
-        <div class="codex-related-list">
-          {% for page in faction_entries %}
-            <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
-              <strong>{{ page.title }}</strong>
-              <span>Faction Entry</span>
-            </a>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="codex-card" id="culture">
-        <p class="label">Peoples</p>
-        <h3>Races of Aetheria</h3>
-        <div class="actions">
-          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='culture') }}">Open Section</a>
-        </div>
-        <div class="codex-related-list">
-          {% for page in race_entries %}
-            <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
-              <strong>{{ page.title }}</strong>
-              <span>Race Entry</span>
-            </a>
-          {% endfor %}
-        </div>
-      </section>
-    </div>
-
-    <div class="codex-landing-grid">
-      <section class="codex-card" id="people">
-        <p class="label">Dossiers</p>
-        <h3>Character Entries</h3>
-        <div class="actions">
-          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='people') }}">Open Section</a>
-        </div>
-        {% if character_entries %}
-          <div class="codex-related-list">
-            {% for page in character_entries %}
-              <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
-                <strong>{{ page.title }}</strong>
-                <span>Character Profile</span>
-              </a>
-            {% endfor %}
-          </div>
+    <div class="world-atlas-module-grid">
+      {% for module in atlas_modules %}
+        {% if module.key == "featured_lore" %}
+          {% if module.pages %}
+            <section class="codex-featured featured-lore-carousel {{ module.layout_class }}" id="featuredLoreCarousel">
+              <div class="section-heading">
+                <div class="card-header-inline world-inline-title">
+                  <h2>{{ module.title }}</h2>
+                </div>
+              </div>
+              <div class="featured-lore-stage">
+                {% for page in module.pages %}
+                  <article class="featured-lore-slide{% if loop.first %} is-active{% endif %}" data-featured-lore-slide>
+                    <div class="featured-lore-media">
+                      {% if page.image_url %}
+                        <img src="{{ page.image_url }}" alt="{{ page.title }}" />
+                      {% else %}
+                        <span>{{ page.initial }}</span>
+                      {% endif %}
+                    </div>
+                    <div class="featured-lore-copy">
+                      <div class="featured-lore-meta">
+                        <span class="announcement-type">{{ page.world_category|replace("-", " ")|replace("_", " ")|title if page.world_category else "World Page" }}</span>
+                      </div>
+                      <h3><a class="card-title-link" href="{{ url_for('world_entry', page_id=page.id) }}">{{ page.title }}</a></h3>
+                      {% if page.subheading %}
+                        <p class="featured-lore-subtitle">{{ page.subheading }}</p>
+                      {% endif %}
+                      <p>{{ page.preview_text or "No atlas preview line has been added yet." }}</p>
+                      <p class="featured-lore-category-line">
+                        <a class="featured-lore-category-link" href="{{ url_for('world_category', category_key=(page.world_category or 'misc')) }}">
+                          {{ page.world_category|replace("-", " ")|replace("_", " ")|title if page.world_category else "Misc" }}
+                        </a>
+                      </p>
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+              {% if module.pages|length > 1 %}
+                <div class="featured-lore-controls">
+                  <button class="icon-button featured-lore-nav" type="button" data-featured-lore-nav="prev" aria-label="Previous featured lore">&#8249;</button>
+                  <div class="featured-lore-dots">
+                    {% for page in module.pages %}
+                      <button class="featured-lore-dot{% if loop.first %} is-active{% endif %}" type="button" data-featured-lore-dot="{{ loop.index0 }}" aria-label="Go to featured lore {{ loop.index }}"></button>
+                    {% endfor %}
+                  </div>
+                  <button class="icon-button featured-lore-nav" type="button" data-featured-lore-nav="next" aria-label="Next featured lore">&#8250;</button>
+                </div>
+              {% endif %}
+            </section>
+          {% elif current_user.role == "dm" and campaign and campaign.dm_user_id == current_user.id %}
+            <section class="codex-featured featured-lore-carousel {{ module.layout_class }}">
+              <div class="section-heading">
+                <div class="card-header-inline world-inline-title">
+                  <h2>{{ module.title }}</h2>
+                </div>
+              </div>
+              <p class="feed-empty">No World Atlas pages have been chosen for featured lore yet.</p>
+            </section>
+          {% endif %}
+        {% elif module.key == "featured_collections" %}
+          <section class="codex-section {{ module.layout_class }}">
+            <div class="section-heading">
+              <div class="card-header-inline world-inline-title">
+                <h2>{{ module.title }}</h2>
+              </div>
+            </div>
+            {% if module.collections %}
+              <div class="world-collection-grid">
+                {% for collection in module.collections %}
+                  <article class="codex-card world-collection-card">
+                    <div class="card-header-inline world-inline-title">
+                      <h3><a class="card-title-link" href="{{ url_for('world_collection', collection_id=collection.id) }}">{{ collection.title }}</a></h3>
+                    </div>
+                    <p class="wiki-index-snippet">{{ collection.preview_text or "No collection preview line has been added yet." }}</p>
+                    <div class="world-collection-card-meta">
+                      <span>{{ collection.page_count }} pages</span>
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+            {% elif current_user.role == "dm" and campaign and campaign.dm_user_id == current_user.id %}
+              <div class="codex-card">
+                <p class="feed-empty">No featured collections have been created yet.</p>
+              </div>
+            {% endif %}
+          </section>
+        {% elif module.key == "recent_pages" %}
+          <section class="codex-section {{ module.layout_class }}">
+            <div class="section-heading">
+              <div class="world-inline-title-stack">
+                <div class="card-header-inline world-inline-title">
+                  <h2>{{ module.title }}</h2>
+                </div>
+                {% if module.preview_line %}
+                  <p class="world-module-preview-line">{{ module.preview_line }}</p>
+                {% endif %}
+              </div>
+            </div>
+            {% if module.pages %}
+              {% if module.display_style == "list" %}
+                <div class="codex-related-list">
+                  {% for page in module.pages %}
+                    <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+                      <strong>{{ page.title }}</strong>
+                      <span>{{ page.subheading or page.preview_text }}</span>
+                    </a>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="world-entry-grid world-entry-grid-compact">
+                  {% for page in module.pages %}
+                    <article class="codex-card world-entry-card">
+                      <a class="world-entry-card-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+                        <div class="world-entry-card-media">
+                          {% if page.image_url %}
+                            <img src="{{ page.image_url }}" alt="{{ page.title }}" />
+                          {% else %}
+                            <span>{{ page.initial }}</span>
+                          {% endif %}
+                        </div>
+                        <div class="world-entry-card-copy">
+                          <h3>{{ page.title }}</h3>
+                          {% if page.subheading %}
+                            <p class="world-entry-card-subheading">{{ page.subheading }}</p>
+                          {% endif %}
+                        </div>
+                      </a>
+                    </article>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% else %}
+              <p class="feed-empty">No recent pages are available yet.</p>
+            {% endif %}
+          </section>
+        {% elif module.key == "image_feature" %}
+          {% if module.image_url or module.body_raw %}
+            <section class="codex-section world-image-feature {{ module.layout_class }}{% if module.image_alignment == 'left' %} is-left{% endif %}">
+              <div class="world-image-feature-media">
+                {% if module.image_url %}
+                  <img src="{{ module.image_url }}" alt="{{ module.title }}" />
+                {% else %}
+                  <span>{{ module.title[:1] if module.title else "W" }}</span>
+                {% endif %}
+              </div>
+              <div class="world-image-feature-copy">
+                <div class="section-heading">
+                  <div class="card-header-inline world-inline-title">
+                    <h2>{{ module.title }}</h2>
+                  </div>
+                </div>
+                <div class="codex-article-content">{{ module.body|safe }}</div>
+                {% if module.button_label and module.button_href %}
+                  <a class="ghost-btn" href="{{ module.button_href }}">{{ module.button_label }}</a>
+                {% endif %}
+              </div>
+            </section>
+          {% endif %}
+        {% elif module.key == "rich_text_block" %}
+          {% if module.body_raw %}
+            <section class="codex-section {{ module.layout_class }}{% if module.style == 'callout' %} world-rich-text-callout{% endif %}">
+              <div class="section-heading">
+                <div class="card-header-inline world-inline-title">
+                  <h2>{{ module.title }}</h2>
+                </div>
+              </div>
+              <div class="codex-article-content">{{ module.body|safe }}</div>
+            </section>
+          {% endif %}
+        {% elif module.key == "featured_page" %}
+          {% if module.page %}
+            <section class="codex-card world-featured-page-card {{ module.layout_class }}">
+              {% if module.show_image %}
+                <a class="world-entry-card-link" href="{{ url_for('world_entry', page_id=module.page.id) }}">
+                  <div class="world-entry-card-media">
+                    {% if module.page.image_url %}
+                      <img src="{{ module.page.image_url }}" alt="{{ module.page.title }}" />
+                    {% else %}
+                      <span>{{ module.page.initial }}</span>
+                    {% endif %}
+                  </div>
+                </a>
+              {% endif %}
+              <div class="section-heading">
+                <div class="card-header-inline world-inline-title">
+                  <h2>{{ module.title }}</h2>
+                </div>
+              </div>
+              {% if module.show_category and module.page.world_category %}
+                <p class="featured-lore-category-line">
+                  <a class="featured-lore-category-link" href="{{ url_for('world_category', category_key=module.page.world_category) }}">{{ module.page.world_category|replace("-", " ")|replace("_", " ")|title }}</a>
+                </p>
+              {% endif %}
+              <h3><a class="card-title-link" href="{{ url_for('world_entry', page_id=module.page.id) }}">{{ module.page.title }}</a></h3>
+              {% if module.page.subheading %}
+                <p class="world-entry-card-subheading">{{ module.page.subheading }}</p>
+              {% endif %}
+              {% if module.show_preview_line %}
+                <p>{{ module.page.preview_text or "No atlas preview line has been added yet." }}</p>
+              {% endif %}
+            </section>
+          {% endif %}
+        {% elif module.key == "category_spotlight" %}
+          {% if module.category %}
+            <section class="codex-card world-atlas-category-card {{ module.layout_class }}" id="{{ module.key }}">
+              <div class="section-heading">
+                <div class="card-header-inline world-inline-title">
+                  <h3><a class="card-title-link" href="{{ url_for('world_category', category_key=module.category.key) }}">{{ module.title }}</a></h3>
+                </div>
+              </div>
+              {% if module.pages %}
+                {% if module.display_style == "cards" %}
+                  <div class="world-entry-grid world-entry-grid-compact">
+                    {% for page in module.pages %}
+                      <article class="codex-card world-entry-card">
+                        <a class="world-entry-card-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+                          <div class="world-entry-card-media">
+                            {% if page.image_url %}
+                              <img src="{{ page.image_url }}" alt="{{ page.title }}" />
+                            {% else %}
+                              <span>{{ page.initial }}</span>
+                            {% endif %}
+                          </div>
+                          <div class="world-entry-card-copy">
+                            <h3>{{ page.title }}</h3>
+                            {% if page.subheading %}
+                              <p class="world-entry-card-subheading">{{ page.subheading }}</p>
+                            {% endif %}
+                          </div>
+                        </a>
+                      </article>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="codex-related-list">
+                    {% for page in module.pages %}
+                      <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+                        <strong>{{ page.title }}</strong>
+                        <span>{{ page.subheading or page.preview_text }}</span>
+                      </a>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              {% else %}
+                <p class="feed-empty">No pages are available in {{ module.category.label }} yet.</p>
+              {% endif %}
+            </section>
+          {% endif %}
         {% else %}
-          <p class="feed-empty">No character entries are available yet.</p>
+          <section class="codex-card world-atlas-category-card {{ module.layout_class }}" id="{{ module.key }}">
+            <div class="section-heading">
+              <div class="card-header-inline world-inline-title">
+                <h3><a class="card-title-link" href="{{ module.href }}">{{ module.title }}</a></h3>
+              </div>
+            </div>
+            {% if module.pages %}
+              <div class="codex-related-list">
+                {% for page in module.pages %}
+                  <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
+                    <strong>{{ page.title }}</strong>
+                    <span>{{ page.subheading or page.source|replace("_", " ")|title }}</span>
+                  </a>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="feed-empty">{{ module.empty_message }}</p>
+            {% endif %}
+          </section>
         {% endif %}
-      </section>
-
-      <section class="codex-card" id="misc">
-        <p class="label">Recent Imports</p>
-        <h3>Newest World Entries</h3>
-        <div class="actions">
-          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='misc') }}">Open Section</a>
-        </div>
-        {% if recent_entries %}
-          <div class="codex-related-list">
-            {% for page in recent_entries %}
-              <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
-                <strong>{{ page.title }}</strong>
-                <span>{{ page.source|replace("_", " ")|title }}</span>
-              </a>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="feed-empty">No imported entries are available yet.</p>
-        {% endif %}
-      </section>
-    </div>
-
-    <div class="codex-landing-grid">
-      <section class="codex-card" id="flora-fauna">
-        <p class="label">Flora & Fauna</p>
-        <h3>Bestiary & Natural World</h3>
-        <div class="actions">
-          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='flora-fauna') }}">Open Section</a>
-        </div>
-        {% if flora_fauna_entries %}
-          <div class="codex-related-list">
-            {% for page in flora_fauna_entries %}
-              <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
-                <strong>{{ page.title }}</strong>
-                <span>{{ page.source|replace("_", " ")|title }}</span>
-              </a>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="feed-empty">No flora or fauna entries are available yet.</p>
-        {% endif %}
-      </section>
-
-      <section class="codex-card" id="history">
-        <p class="label">History</p>
-        <h3>Timelines & Major Events</h3>
-        <div class="actions">
-          <a class="ghost-btn small-button" href="{{ url_for('world_category', category_key='history') }}">Open Section</a>
-        </div>
-        {% if history_entries %}
-          <div class="codex-related-list">
-            {% for page in history_entries %}
-              <a class="codex-related-link" href="{{ url_for('world_entry', page_id=page.id) }}">
-                <strong>{{ page.title }}</strong>
-                <span>{{ page.source|replace("_", " ")|title }}</span>
-              </a>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="feed-empty">No history entries are available yet.</p>
-        {% endif %}
-      </section>
+      {% endfor %}
     </div>
   </section>
+  {% set featured_module = atlas_modules | selectattr('key', 'equalto', 'featured_lore') | list %}
+  {% if featured_module and featured_module[0].pages|length > 1 %}
+    <script>
+      (function () {
+        const carousel = document.getElementById("featuredLoreCarousel");
+        if (!carousel) return;
+
+        const slides = Array.from(carousel.querySelectorAll("[data-featured-lore-slide]"));
+        const dots = Array.from(carousel.querySelectorAll("[data-featured-lore-dot]"));
+        const prevButton = carousel.querySelector("[data-featured-lore-nav='prev']");
+        const nextButton = carousel.querySelector("[data-featured-lore-nav='next']");
+        let currentIndex = 0;
+        let autoRotateId = null;
+
+        function renderSlide(index) {
+          currentIndex = (index + slides.length) % slides.length;
+          slides.forEach((slide, slideIndex) => {
+            slide.classList.toggle("is-active", slideIndex === currentIndex);
+          });
+          dots.forEach((dot, dotIndex) => {
+            dot.classList.toggle("is-active", dotIndex === currentIndex);
+          });
+        }
+
+        function startAutoRotate() {
+          window.clearInterval(autoRotateId);
+          autoRotateId = window.setInterval(() => {
+            renderSlide(currentIndex + 1);
+          }, 7000);
+        }
+
+        prevButton?.addEventListener("click", () => {
+          renderSlide(currentIndex - 1);
+          startAutoRotate();
+        });
+
+        nextButton?.addEventListener("click", () => {
+          renderSlide(currentIndex + 1);
+          startAutoRotate();
+        });
+
+        dots.forEach((dot, dotIndex) => {
+          dot.addEventListener("click", () => {
+            renderSlide(dotIndex);
+            startAutoRotate();
+          });
+        });
+
+        renderSlide(0);
+        startAutoRotate();
+      }());
+    </script>
+  {% endif %}
 {% endblock %}

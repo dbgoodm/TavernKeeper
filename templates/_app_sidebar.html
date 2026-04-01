@@ -28,7 +28,7 @@
           {% endif %}
         {% else %}
           {% if active_sidebar_membership %}
-            <span>Character: <a class="card-title-link" href="{{ url_for('character_page', membership_id=active_sidebar_membership.id) }}">{{ active_sidebar_membership.character_name }}</a></span>
+            <span>Character: <a class="card-title-link" href="{{ url_for('character_sheet_alt', membership_id=active_sidebar_membership.id) }}">{{ active_sidebar_membership.character_name }}</a></span>
           {% else %}
             <span>Join a campaign to unlock notes, lore, and party tools.</span>
           {% endif %}
@@ -54,10 +54,23 @@
           {% endfor %}
         </div>
       </nav>
+    {% elif sidebar_body_mode == "settings" %}
+      <nav class="campaign-card compact-card sidebar-page-nav" aria-label="Settings navigation">
+        <a class="sidebar-link sidebar-page-link" href="{{ url_for('settings_profile') }}">Settings</a>
+        <div class="sidebar-page-group">
+          {% for item in settings_sidebar_nav %}
+            <div class="sidebar-page-row">
+              <a class="sidebar-sublink sidebar-page-sublink{% if item.active %} is-active{% endif %}" href="{{ item.href }}">
+                <span>{{ item.label }}</span>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      </nav>
     {% elif active_sidebar_campaign %}
       <div class="campaign-card compact-card">
         <div class="card-header-inline">
-          <p class="label">Campaign Premise</p>
+          <h3>Campaign Premise</h3>
           {% if current_user.role == "dm" and request.endpoint == "dm_dashboard" %}
             <button class="icon-button" id="premiseEditToggle" type="button" aria-label="Edit campaign premise">✎</button>
           {% endif %}
@@ -68,7 +81,9 @@
             <input type="hidden" name="form_type" value="premise" />
             <label>
               Edit Premise
-              <textarea name="premise" rows="5" placeholder="Describe the campaign premise.">{{ active_sidebar_campaign.premise or "" }}</textarea>
+                {% set toolbar_target = "sidebarCampaignPremise" %}
+                {% include "_markdown_toolbar.html" %}
+                <textarea id="sidebarCampaignPremise" name="premise" rows="5" placeholder="Describe the campaign premise.">{{ active_sidebar_campaign.premise or "" }}</textarea>
             </label>
             <button class="primary-btn" type="submit">Save Premise</button>
           </form>
@@ -80,14 +95,20 @@
   <div class="sidebar-bottom">
     <div class="account-menu">
       <div class="account-trigger">
-        <div class="account-avatar">{{ current_user.display_name[0]|upper }}</div>
+        <div class="account-avatar">
+          {% if current_user.profile_image_url %}
+            <img src="{{ current_user.profile_image_url }}" alt="{{ current_user.display_name }} profile picture" />
+          {% else %}
+            {{ current_user.display_name[0]|upper }}
+          {% endif %}
+        </div>
         <div class="account-copy">
           <strong>{{ current_user.display_name }}</strong>
           <span>
             {% if current_user.role == "dm" %}
               {{ active_sidebar_campaign.name if active_sidebar_campaign else "Dungeon Master" }}
             {% elif active_sidebar_membership %}
-              <a class="card-title-link" href="{{ url_for('character_page', membership_id=active_sidebar_membership.id) }}">{{ active_sidebar_membership.character_name }}</a>
+              <a class="card-title-link" href="{{ url_for('character_sheet_alt', membership_id=active_sidebar_membership.id) }}">{{ active_sidebar_membership.character_name }}</a>
             {% else %}
               Player
             {% endif %}
@@ -98,7 +119,7 @@
         <a class="account-link" href="{{ url_for('dm_dashboard' if current_user.role == 'dm' else 'player_home') }}">Dashboard</a>
         <a class="account-link" href="{{ url_for('world_atlas') }}">World Atlas</a>
         {% if current_user.role == "player" and active_sidebar_membership %}
-          <a class="account-link" href="{{ url_for('player_character_sheet') }}">Character Sheet</a>
+          <a class="account-link" href="{{ url_for('character_sheet_alt', membership_id=active_sidebar_membership.id) }}">Character Sheet</a>
         {% endif %}
         <div class="account-nav-group">
           <a class="account-link" href="{{ url_for('campaigns_page') }}">Campaigns</a>
@@ -112,7 +133,7 @@
             </div>
           {% endif %}
         </div>
-        <a class="account-link" href="{{ url_for('settings') }}">Settings</a>
+        <a class="account-link" href="{{ url_for('settings_profile') }}">Settings</a>
         {% if account_campaigns|length > 1 %}
           <div class="account-group-label">Switch Campaign</div>
           {% for item in account_campaigns %}

@@ -12,7 +12,7 @@
       <div class="codex-header-copy">
         <p class="eyebrow">Preview Only</p>
         <h1>World Atlas Editor</h1>
-        <p class="survey-top-copy">This is the full-entry authoring preview that would sit above the quick lore-add flow. It shows the shared core fields plus the category-specific details each type of world entry could carry.</p>
+        <p class="survey-top-copy">This is the full-page authoring preview that would sit above the quick lore-add flow. It shows the shared core fields plus the category-specific details each type of world page could carry.</p>
       </div>
       <div class="codex-header-actions">
         <a class="ghost-btn" href="{{ url_for('world_atlas') }}">Back To World Atlas</a>
@@ -22,7 +22,7 @@
     <section class="codex-card world-editor-preview-intro">
       <div>
         <p class="label">Flow Distinction</p>
-        <h2>Broadcast lore is quick-add. This is the deliberate editor.</h2>
+      <h2>DM Actions lore is quick-add. This is the deliberate editor.</h2>
       </div>
       <p>This preview is intentionally not saving anything yet. It is here so we can judge structure, grouping, and field density before we wire the World Atlas editor into the real campaign flow.</p>
     </section>
@@ -31,7 +31,7 @@
       <div class="section-heading">
         <div>
           <p class="label">Category Pages</p>
-          <h3>Switch The Entry Type</h3>
+          <h3>Switch The Page Type</h3>
         </div>
       </div>
       <div class="world-editor-switcher">
@@ -51,7 +51,7 @@
             <div class="section-heading world-editor-card-heading">
               <div>
                 <p class="label">Shared Core</p>
-                <h3>Fields Every World Entry Shares</h3>
+                <h3>Fields Every World Page Shares</h3>
               </div>
             </div>
 
@@ -94,7 +94,7 @@
             <div class="world-editor-category-banner">
               <div>
                 <strong>{{ active_preview_category.sample_title }}</strong>
-                <span>Example entry preview</span>
+                <span>Example page preview</span>
               </div>
               <p>{{ active_preview_category.summary }}</p>
             </div>
@@ -144,7 +144,7 @@
             <div class="world-editor-action-stack">
               <span class="world-editor-action-chip">Save Draft</span>
               <span class="world-editor-action-chip">Publish To Campaign</span>
-              <span class="world-editor-action-chip">Link Related Entries</span>
+              <span class="world-editor-action-chip">Link Related Pages</span>
               <span class="world-editor-action-chip">Attach Media</span>
               <span class="world-editor-action-chip">Set Visibility</span>
             </div>

@@ -12,7 +12,7 @@
           {% endif %}
         </div>
         <div class="character-sheet-alt-title">
-          <p class="eyebrow">Alternate Character Sheet</p>
+          <p class="eyebrow">Character Sheet</p>
           <h2>{{ membership.character_name }}</h2>
           <p class="character-subline">{{ membership.species or "Species Pending" }} - {{ membership.class_name or "Class Pending" }} {{ membership.level or "-" }}{% if membership.subclass %} ({{ membership.subclass }}){% endif %}</p>
           {% if character_user %}
@@ -25,11 +25,10 @@
       </div>
       <div class="character-sheet-alt-actions">
         {% if can_edit_sheet %}
-          <a class="primary-btn" href="{{ url_for('player_character_sheet', campaign_id=membership.campaign_id) }}">Edit Sheet</a>
+          <a class="primary-btn" href="{{ url_for('character_editor', membership_id=membership.id) }}">Edit Character</a>
         {% endif %}
-        <a class="ghost-btn" href="{{ url_for('character_page', membership_id=membership.id) }}">Original Page</a>
         {% if membership.wiki_page_id %}
-          <a class="ghost-btn" href="{{ url_for('world_entry', page_id=membership.wiki_page_id) }}">World Entry</a>
+          <a class="ghost-btn" href="{{ url_for('world_entry', page_id=membership.wiki_page_id) }}">World Page</a>
         {% endif %}
       </div>
     </div>
@@ -74,7 +73,6 @@
         <section class="character-sheet-alt-panel">
           <div class="section-heading">
             <div>
-              <p class="label">Abilities</p>
               <h3>Ability Scores</h3>
             </div>
           </div>
@@ -92,7 +90,27 @@
         <section class="character-sheet-alt-panel">
           <div class="section-heading">
             <div>
-              <p class="label">Senses</p>
+              <h3>Saving Throws</h3>
+            </div>
+          </div>
+          <div class="character-save-list">
+            {% for row in saving_throw_rows %}
+              <div class="character-save-row">
+                <span>{{ row.label }}</span>
+                <div class="character-save-meta">
+                  {% if row.proficient %}
+                    <span class="visibility-badge">Prof</span>
+                  {% endif %}
+                  <strong>{{ row.modifier }}</strong>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="character-sheet-alt-panel">
+          <div class="section-heading">
+            <div>
               <h3>Passives</h3>
             </div>
           </div>
@@ -106,7 +124,22 @@
         <section class="character-sheet-alt-panel">
           <div class="section-heading">
             <div>
-              <p class="label">Play State</p>
+              <h3>Training</h3>
+            </div>
+          </div>
+          <div class="character-training-list">
+            {% for section in training_sections %}
+              <div class="character-training-row">
+                <strong>{{ section.title }}</strong>
+                <p>{{ section.value }}</p>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="character-sheet-alt-panel">
+          <div class="section-heading">
+            <div>
               <h3>Death Saves</h3>
             </div>
           </div>
@@ -147,41 +180,20 @@
             </div>
           </div>
         </section>
-
-        <section class="character-sheet-alt-panel">
-          <div class="section-heading">
-            <div>
-              <p class="label">Training</p>
-              <h3>Notable Proficiencies</h3>
-            </div>
-          </div>
-          {% if notable_proficiencies %}
-            <div class="player-character-proficiency-list">
-              {% for item in notable_proficiencies %}
-                <div class="player-character-proficiency-item">
-                  <span>{{ item.name }}</span>
-                  <span>{{ item.tier }}{% if item.modifier %} - {{ item.modifier }}{% endif %}</span>
-                </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <p class="feed-empty">No notable proficiencies added yet.</p>
-          {% endif %}
-        </section>
       </aside>
 
       <div class="character-sheet-alt-main">
         <div class="character-sheet-alt-tabs" id="characterSheetTabs">
           <button class="entry-tab active" type="button" data-sheet-tab="overview">Overview</button>
           <button class="entry-tab" type="button" data-sheet-tab="combat">Combat</button>
-          <button class="entry-tab" type="button" data-sheet-tab="traits">Features & Traits</button>
+          <button class="entry-tab" type="button" data-sheet-tab="skills">Skills</button>
+          <button class="entry-tab" type="button" data-sheet-tab="inventory">Inventory</button>
           <button class="entry-tab" type="button" data-sheet-tab="journal">Journal</button>
         </div>
 
         <section class="character-sheet-alt-panel character-sheet-tab-panel is-active" data-sheet-panel="overview">
           <div class="section-heading">
             <div>
-              <p class="label">Overview</p>
               <h3>Character At A Glance</h3>
             </div>
           </div>
@@ -202,8 +214,8 @@
               <div class="markdown-preview">{{ rendered_story_hook|safe }}</div>
             </article>
             <article class="character-overview-card">
-              <strong>Player Spotlight</strong>
-              <div class="markdown-preview">{{ rendered_player_spotlight|safe }}</div>
+              <strong>Features & Traits</strong>
+              <div class="markdown-preview">{{ rendered_features_traits|safe }}</div>
             </article>
           </div>
         </section>
@@ -211,8 +223,7 @@
         <section class="character-sheet-alt-panel character-sheet-tab-panel" data-sheet-panel="combat" hidden>
           <div class="section-heading">
             <div>
-              <p class="label">Combat</p>
-              <h3>Quick Reference</h3>
+              <h3>Combat Reference</h3>
             </div>
           </div>
           <div class="character-combat-grid">
@@ -228,6 +239,32 @@
               </div>
             </div>
             <div class="character-combat-panel">
+              <strong>Hit Point Tracker</strong>
+              {% if can_manage %}
+                <form class="character-inline-form" method="post" action="{{ url_for('update_character_hit_points', membership_id=membership.id) }}">
+                  <input type="hidden" name="next" value="{{ request.path }}" />
+                  <div class="fields-2">
+                    <label>
+                      Current HP
+                      <input type="number" name="current_hit_points" min="0" value="{{ membership.current_hit_points or '0' }}" />
+                    </label>
+                    <label>
+                      Temp HP
+                      <input type="number" name="temp_hit_points" min="0" value="{{ membership.temp_hit_points or '0' }}" />
+                    </label>
+                  </div>
+                  <p class="field-hint">Max HP is managed from Edit Character.</p>
+                  <button class="primary-btn" type="submit">Update HP</button>
+                </form>
+              {% else %}
+                <div class="character-overview-stack">
+                  <p>Current HP: {{ membership.current_hit_points or "-" }}</p>
+                  <p>Max HP: {{ membership.max_hit_points or "-" }}</p>
+                  <p>Temp HP: {{ membership.temp_hit_points or "0" }}</p>
+                </div>
+              {% endif %}
+            </div>
+            <div class="character-combat-panel">
               <strong>Combat Snapshot</strong>
               <div class="character-overview-stack">
                 <p>Armor Class: {{ membership.armor_class or "-" }}</p>
@@ -240,33 +277,129 @@
           </div>
         </section>
 
-        <section class="character-sheet-alt-panel character-sheet-tab-panel" data-sheet-panel="traits" hidden>
+        <section class="character-sheet-alt-panel character-sheet-tab-panel" data-sheet-panel="skills" hidden>
           <div class="section-heading">
             <div>
-              <p class="label">Traits</p>
-              <h3>Features, Notes, and Identity</h3>
+              <h3>Skills</h3>
             </div>
           </div>
-          <div class="character-traits-stack">
-            <article class="character-overview-card">
-              <strong>Character Notes</strong>
-              <div class="markdown-preview">{{ rendered_character_notes_text|safe }}</div>
-            </article>
-            <article class="character-overview-card">
-              <strong>Dream Campaign Fit</strong>
-              <div class="markdown-preview">{{ rendered_dream_campaign|safe }}</div>
-            </article>
-            <article class="character-overview-card">
-              <strong>Table Preferences</strong>
-              <div class="markdown-preview">{{ rendered_expectation_notes|safe }}</div>
-            </article>
+          <div class="character-skills-grid">
+            {% for row in skill_rows %}
+              <article class="character-skill-card">
+                <div class="character-skill-head">
+                  <strong>{{ row.name }}</strong>
+                  <span>{{ row.modifier }}</span>
+                </div>
+                <div class="character-skill-meta">
+                  <span>{{ row.ability }}</span>
+                  <span>{{ row.tier }}</span>
+                </div>
+              </article>
+            {% endfor %}
           </div>
+        </section>
+
+        <section class="character-sheet-alt-panel character-sheet-tab-panel" data-sheet-panel="inventory" hidden>
+          <div class="section-heading">
+            <div>
+              <h3>Inventory</h3>
+            </div>
+          </div>
+
+          {% if can_manage %}
+            <div class="character-inventory-tools">
+              <form class="character-inventory-add" method="post" action="{{ url_for('add_character_inventory_item', membership_id=membership.id) }}">
+                <input type="hidden" name="next" value="{{ request.path }}" />
+                <div class="fields-3">
+                  <label>
+                    Item Name
+                    <input type="text" name="item_name" placeholder="Potion of Healing" required />
+                  </label>
+                  <label>
+                    Quantity
+                    <input type="number" name="quantity" min="1" value="1" />
+                  </label>
+                  <label>
+                    Source
+                    <input type="text" name="source" placeholder="{% if current_user.role == 'dm' %}Sent by DM{% else %}Loot, purchase, reward...{% endif %}" />
+                  </label>
+                </div>
+                <label class="field full">
+                  Description
+                  <textarea name="description" rows="3" placeholder="Short reminder of what the item does or why it matters."></textarea>
+                </label>
+                <button class="primary-btn" type="submit">{% if current_user.role == "dm" %}Send Item To Inventory{% else %}Add Item{% endif %}</button>
+              </form>
+            </div>
+          {% endif %}
+
+          {% if inventory_items %}
+            <div class="character-inventory-grid">
+              {% for item in inventory_items %}
+                <article class="character-inventory-card">
+                  {% if can_manage %}
+                    <form method="post" action="{{ url_for('update_character_inventory_item', membership_id=membership.id, item_id=item.id) }}">
+                      <input type="hidden" name="next" value="{{ request.path }}" />
+                      <div class="character-inventory-card-head">
+                        <label class="field">
+                          Item
+                          <input type="text" name="item_name" value="{{ item.name }}" required />
+                        </label>
+                        <label class="field small-field">
+                          Qty
+                          <input type="number" name="quantity" min="1" value="{{ item.quantity }}" />
+                        </label>
+                      </div>
+                      <label class="field full">
+                        Description
+                        <textarea name="description" rows="3" placeholder="Item details, attunement notes, charges, or reminders.">{{ item.description }}</textarea>
+                      </label>
+                      <div class="character-inventory-footer">
+                        <label class="checkbox-inline">
+                          <input type="checkbox" name="equipped" value="true"{% if item.equipped %} checked{% endif %} />
+                          <span>Equipped</span>
+                        </label>
+                        <label class="field inline-field">
+                          Source
+                          <input type="text" name="source" value="{{ item.source }}" placeholder="Loot, reward, sent by DM" />
+                        </label>
+                      </div>
+                      <div class="character-inventory-actions">
+                        <button class="ghost-btn small-button" type="submit">Save Item</button>
+                      </div>
+                    </form>
+                    <form method="post" action="{{ url_for('delete_character_inventory_item', membership_id=membership.id, item_id=item.id) }}" onsubmit="return window.confirm('Remove this item from inventory?');">
+                      <input type="hidden" name="next" value="{{ request.path }}" />
+                      <button class="icon-button campaign-feed-delete" type="submit" aria-label="Delete item">🗑</button>
+                    </form>
+                  {% else %}
+                    <div class="character-inventory-card-head">
+                      <div>
+                        <strong>{{ item.name }}</strong>
+                        <p>Qty {{ item.quantity }}</p>
+                      </div>
+                      {% if item.equipped %}
+                        <span class="visibility-badge">Equipped</span>
+                      {% endif %}
+                    </div>
+                    {% if item.description %}
+                      <p>{{ item.description }}</p>
+                    {% endif %}
+                    {% if item.source %}
+                      <span class="campaign-feed-byline">{{ item.source }}</span>
+                    {% endif %}
+                  {% endif %}
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="feed-empty">No items are in this inventory yet.</p>
+          {% endif %}
         </section>
 
         <section class="character-sheet-alt-panel character-sheet-tab-panel" data-sheet-panel="journal" hidden>
           <div class="section-heading">
             <div>
-              <p class="label">Journal</p>
               <h3>Character Notes Feed</h3>
             </div>
           </div>
@@ -341,7 +474,7 @@
         formData.append("death_save_successes", successInput.value || "0");
         formData.append("death_save_failures", failureInput.value || "0");
 
-        const response = await fetch("{{ url_for('player_death_saves') }}", {
+        const response = await fetch("{{ url_for('update_character_death_saves', membership_id=membership.id) }}", {
           method: "POST",
           body: formData,
           headers: { "X-Requested-With": "fetch" }

@@ -1,0 +1,729 @@
+{% extends "base.html" %}
+{% macro render_module_settings(module, category_options, available_pages, available_collections) -%}
+  {% set settings = module.settings or {} %}
+  <div class="atlas-preview-card-settings" data-module-settings>
+    {% if module.key == "featured_lore" %}
+      <p class="atlas-settings-note">Manage which pages rotate in the banner from the Featured Lore editor.</p>
+      <a class="ghost-btn small-button" href="{{ url_for('world_featured_lore_edit') }}">Manage Featured Lore</a>
+    {% elif module.key == "featured_collections" %}
+      <p class="atlas-settings-note">Reorder the collections you want in this module, remove any with the <code>X</code>, and add them back from the tray below.</p>
+      {% if available_collections %}
+        {% set selected_ids = settings.collection_ids or [] %}
+        {% set configured = settings.configured %}
+        <div class="atlas-collection-manager" data-collection-manager>
+          <div class="atlas-collection-active-list" data-collection-active-list>
+            {% if configured and selected_ids %}
+              {% for selected_id in selected_ids %}
+                {% for collection in available_collections if collection.id == selected_id %}
+                  <article class="atlas-collection-card" data-collection-card data-collection-id="{{ collection.id }}" draggable="true">
+                    <input type="hidden" name="module_setting_{{ module.key }}_collection_ids" value="{{ collection.id }}" />
+                    <div class="atlas-collection-card-head">
+                      <div class="atlas-preview-card-title-wrap">
+                        <button class="atlas-layout-handle" type="button" aria-label="Reorder {{ collection.title }}" title="Drag to reorder">&#9776;</button>
+                        <strong>{{ collection.title }}</strong>
+                      </div>
+                      <button class="atlas-remove-toggle" type="button" data-remove-collection aria-label="Remove {{ collection.title }}" title="Remove collection">&times;</button>
+                    </div>
+                    <p>{{ collection.preview_text or "No collection preview line yet." }}</p>
+                  </article>
+                {% endfor %}
+              {% endfor %}
+            {% else %}
+              {% for collection in available_collections %}
+                <article class="atlas-collection-card" data-collection-card data-collection-id="{{ collection.id }}" draggable="true">
+                  <input type="hidden" name="module_setting_{{ module.key }}_collection_ids" value="{{ collection.id }}" />
+                  <div class="atlas-collection-card-head">
+                    <div class="atlas-preview-card-title-wrap">
+                      <button class="atlas-layout-handle" type="button" aria-label="Reorder {{ collection.title }}" title="Drag to reorder">&#9776;</button>
+                      <strong>{{ collection.title }}</strong>
+                    </div>
+                    <button class="atlas-remove-toggle" type="button" data-remove-collection aria-label="Remove {{ collection.title }}" title="Remove collection">&times;</button>
+                  </div>
+                  <p>{{ collection.preview_text or "No collection preview line yet." }}</p>
+                </article>
+              {% endfor %}
+            {% endif %}
+          </div>
+          <div class="atlas-module-library atlas-collection-library" data-collection-library>
+            {% if configured and selected_ids %}
+              {% for collection in available_collections if collection.id not in selected_ids %}
+                <article class="atlas-module-library-card" data-library-collection data-collection-id="{{ collection.id }}" data-collection-title="{{ collection.title|e }}" data-collection-preview="{{ (collection.preview_text or 'No collection preview line yet.')|e }}">
+                  <div class="atlas-module-library-head">
+                    <strong>{{ collection.title }}</strong>
+                  </div>
+                  <p class="atlas-settings-note">{{ collection.preview_text or "No collection preview line yet." }}</p>
+                  <div class="atlas-module-library-controls">
+                    <button class="ghost-btn small-button" type="button" data-add-collection>Add Collection</button>
+                  </div>
+                </article>
+              {% endfor %}
+            {% endif %}
+          </div>
+          <p class="feed-empty{% if configured and selected_ids and (available_collections|length > selected_ids|length) %} hidden-helper{% endif %}" data-collection-library-empty>All collections are currently on this module.</p>
+        </div>
+      {% else %}
+        <p class="atlas-settings-note">No collections exist yet.</p>
+      {% endif %}
+      <div class="atlas-settings-inline-actions">
+        <a class="ghost-btn small-button" href="{{ url_for('world_collection_new') }}">New Collection</a>
+      </div>
+    {% elif module.key == "recent_pages" %}
+      <div class="atlas-settings-grid">
+        <label class="world-editor-field">
+          <span>Title</span>
+          <input type="text" name="module_setting_{{ module.key }}_title" value="{{ settings.title or module.title }}" />
+        </label>
+        <label class="world-editor-field">
+          <span>Page Count</span>
+          <input type="number" min="1" max="12" name="module_setting_{{ module.key }}_count" value="{{ settings.count or '6' }}" />
+        </label>
+        <label class="world-editor-field is-full">
+          <span>Preview Line</span>
+          <input type="text" name="module_setting_{{ module.key }}_preview_line" value="{{ settings.preview_line or '' }}" />
+        </label>
+        <label class="world-editor-field">
+          <span>Category</span>
+          <select name="module_setting_{{ module.key }}_category_key">
+            {% for option in category_options %}
+              <option value="{{ option.key }}"{% if option.key == (settings.category_key or 'all') %} selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="world-editor-field">
+          <span>Display</span>
+          <select name="module_setting_{{ module.key }}_display_style">
+            <option value="cards"{% if (settings.display_style or 'cards') == 'cards' %} selected{% endif %}>Cards</option>
+            <option value="list"{% if settings.display_style == 'list' %} selected{% endif %}>List</option>
+          </select>
+        </label>
+      </div>
+    {% elif module.key == "image_feature" %}
+      <div class="atlas-settings-grid">
+        <label class="world-editor-field">
+          <span>Header</span>
+          <input type="text" name="module_setting_{{ module.key }}_title" value="{{ settings.title or module.title }}" />
+        </label>
+        <label class="world-editor-field">
+          <span>Image Alignment</span>
+          <select name="module_setting_{{ module.key }}_image_alignment">
+            <option value="left"{% if settings.image_alignment == 'left' %} selected{% endif %}>Left</option>
+            <option value="right"{% if (settings.image_alignment or 'right') == 'right' %} selected{% endif %}>Right</option>
+          </select>
+        </label>
+        <label class="world-editor-field is-full">
+          <span>Image URL</span>
+          <input type="text" name="module_setting_{{ module.key }}_image_url" value="{{ settings.image_url or '' }}" placeholder="https://example.com/image.jpg" />
+        </label>
+        <label class="world-editor-field is-full">
+          <span>Body</span>
+          {% set toolbar_target = "module_setting_" ~ module.key ~ "_body" %}
+          {% include "_markdown_toolbar.html" %}
+          <textarea id="module_setting_{{ module.key }}_body" name="module_setting_{{ module.key }}_body" rows="5" placeholder="Write the supporting text for this image feature.">{{ settings.body or '' }}</textarea>
+        </label>
+        <label class="world-editor-field">
+          <span>Button Label</span>
+          <input type="text" name="module_setting_{{ module.key }}_button_label" value="{{ settings.button_label or '' }}" placeholder="Learn More" />
+        </label>
+        <label class="world-editor-field">
+          <span>Button Link</span>
+          <input type="text" name="module_setting_{{ module.key }}_button_href" value="{{ settings.button_href or '' }}" placeholder="https://... or /world/..." />
+        </label>
+      </div>
+    {% elif module.key == "rich_text_block" %}
+      <div class="atlas-settings-grid">
+        <label class="world-editor-field">
+          <span>Header</span>
+          <input type="text" name="module_setting_{{ module.key }}_title" value="{{ settings.title or module.title }}" />
+        </label>
+        <label class="world-editor-field">
+          <span>Style</span>
+          <select name="module_setting_{{ module.key }}_style">
+            <option value="standard"{% if (settings.style or 'standard') == 'standard' %} selected{% endif %}>Standard</option>
+            <option value="callout"{% if settings.style == 'callout' %} selected{% endif %}>Callout</option>
+          </select>
+        </label>
+        <label class="world-editor-field is-full">
+          <span>Body</span>
+          {% set toolbar_target = "module_setting_" ~ module.key ~ "_body" %}
+          {% include "_markdown_toolbar.html" %}
+          <textarea id="module_setting_{{ module.key }}_body" name="module_setting_{{ module.key }}_body" rows="7" placeholder="# Heading&#10;Write portal copy, rumors, or lore context here.">{{ settings.body or '' }}</textarea>
+        </label>
+      </div>
+    {% elif module.key == "featured_page" %}
+      <div class="atlas-settings-grid">
+        <label class="world-editor-field">
+          <span>Header</span>
+          <input type="text" name="module_setting_{{ module.key }}_title" value="{{ settings.title or module.title }}" />
+        </label>
+        <label class="world-editor-field is-full">
+          <span>Selected Page</span>
+          <select name="module_setting_{{ module.key }}_page_id">
+            <option value="">Choose A World Atlas Page</option>
+            {% for page in available_pages %}
+              <option value="{{ page.id }}"{% if page.id == (settings.page_id or '') %} selected{% endif %}>{{ page.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="atlas-settings-checkboxes is-full">
+          <label><input type="checkbox" name="module_setting_{{ module.key }}_show_image"{% if settings.show_image is not sameas false %} checked{% endif %} /> Show Image</label>
+          <label><input type="checkbox" name="module_setting_{{ module.key }}_show_category"{% if settings.show_category is not sameas false %} checked{% endif %} /> Show Category</label>
+          <label><input type="checkbox" name="module_setting_{{ module.key }}_show_preview_line"{% if settings.show_preview_line is not sameas false %} checked{% endif %} /> Show Preview Line</label>
+        </div>
+      </div>
+    {% elif module.key == "category_spotlight" %}
+      <div class="atlas-settings-grid">
+        <label class="world-editor-field">
+          <span>Header</span>
+          <input type="text" name="module_setting_{{ module.key }}_title" value="{{ settings.title or module.title }}" />
+        </label>
+        <label class="world-editor-field">
+          <span>Category</span>
+          <select name="module_setting_{{ module.key }}_category_key">
+            {% for option in category_options if option.key != 'all' %}
+              <option value="{{ option.key }}"{% if option.key == (settings.category_key or 'gods') %} selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="world-editor-field">
+          <span>Page Count</span>
+          <input type="number" min="1" max="12" name="module_setting_{{ module.key }}_count" value="{{ settings.count or '5' }}" />
+        </label>
+        <label class="world-editor-field">
+          <span>Sort</span>
+          <select name="module_setting_{{ module.key }}_sort_mode">
+            <option value="alphabetical"{% if (settings.sort_mode or 'alphabetical') == 'alphabetical' %} selected{% endif %}>Alphabetical</option>
+            <option value="recent"{% if settings.sort_mode == 'recent' %} selected{% endif %}>Recent</option>
+          </select>
+        </label>
+        <label class="world-editor-field">
+          <span>Display</span>
+          <select name="module_setting_{{ module.key }}_display_style">
+            <option value="list"{% if (settings.display_style or 'list') == 'list' %} selected{% endif %}>List</option>
+            <option value="cards"{% if settings.display_style == 'cards' %} selected{% endif %}>Cards</option>
+          </select>
+        </label>
+      </div>
+    {% else %}
+      <p class="atlas-settings-note">This module is powered by its linked World Atlas section and does not need extra portal settings.</p>
+    {% endif %}
+  </div>
+{%- endmacro %}
+{% block title %}Edit World Atlas Portal | TavernKeeper{% endblock %}
+{% block app_content %}
+  <section class="surface codex-surface codex-landing-surface world-editor-surface">
+    <div class="codex-breadcrumbs">
+      <a class="card-title-link" href="{{ url_for('world_atlas') }}">World Atlas Portal</a>
+      <span>/</span>
+      <span>Edit Portal</span>
+    </div>
+
+    <div class="codex-header world-editor-header">
+      <div class="codex-header-copy">
+        <div class="card-header-inline world-inline-title">
+          <h1>Edit World Atlas Portal</h1>
+          <button class="ghost-btn small-button" type="button" id="openAtlasModulePicker">Add Module</button>
+        </div>
+        <p class="survey-top-copy">Arrange the portal in modules, decide what is visible, and shape how each section presents your world.</p>
+      </div>
+      <div class="codex-header-actions">
+        <a class="ghost-btn" href="{{ url_for('world_atlas') }}">Back To World Atlas Portal</a>
+      </div>
+    </div>
+
+    <form class="world-editor-form" method="post" id="worldAtlasLayoutForm">
+      <div class="world-editor-layout">
+        <section class="world-editor-main">
+          <section class="codex-card world-editor-preview-card">
+            <div class="section-heading world-editor-card-heading">
+              <div>
+                <h3>Portal Intro</h3>
+              </div>
+            </div>
+            <div class="world-editor-field-grid">
+              <label class="world-editor-field">
+                <span>Portal Title</span>
+                <input type="text" name="world_atlas_title" id="worldAtlasTitleInput" value="{{ atlas_title }}" placeholder="{{ campaign.name }}" />
+              </label>
+              <label class="world-editor-field is-full">
+                <span>Intro Copy</span>
+                {% set toolbar_target = "worldAtlasIntroInput" %}
+                {% include "_markdown_toolbar.html" %}
+                <textarea name="world_atlas_intro" id="worldAtlasIntroInput" rows="4" placeholder="Describe what this World Atlas Portal is for.">{{ atlas_intro }}</textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="codex-card world-editor-preview-card">
+            <div class="section-heading world-editor-card-heading">
+              <div>
+                <h3>Portal Modules</h3>
+              </div>
+            </div>
+            <div class="atlas-preview-shell">
+              <div class="atlas-preview-header">
+                <strong id="atlasPreviewTitle">{{ atlas_title or campaign.name }}</strong>
+                <p id="atlasPreviewIntro">{{ atlas_intro or "Describe what this World Atlas Portal is for." }}</p>
+              </div>
+              <div class="atlas-preview-grid atlas-preview-grid-editor" id="atlasLayoutModuleList">
+                {% for module in module_rows %}
+                  <article class="atlas-preview-card atlas-preview-span-{{ module.span }}" data-layout-module data-module-key="{{ module.key }}" draggable="true">
+                    <input type="hidden" name="active_module_keys" value="{{ module.key }}" />
+                    <input type="hidden" name="module_order_{{ module.key }}" value="{{ loop.index }}" data-layout-order-input />
+                    <div class="atlas-preview-card-head atlas-preview-card-head-editable">
+                      <div class="atlas-preview-card-title-wrap">
+                        <button class="atlas-layout-handle" type="button" aria-label="Reorder {{ module.title }}" title="Drag to reorder">&#9776;</button>
+                        <strong>{{ module.title }}</strong>
+                      </div>
+                      <div class="atlas-preview-card-actions">
+                        <button
+                          class="atlas-visibility-toggle{% if module.visible %} is-visible{% endif %}"
+                          type="button"
+                          data-visibility-toggle
+                          aria-label="Toggle {{ module.title }} visibility"
+                          aria-pressed="{{ 'true' if module.visible else 'false' }}"
+                          title="Toggle visibility"
+                        >&#128065;</button>
+                        <input type="checkbox" name="module_visible_{{ module.key }}"{% if module.visible %} checked{% endif %} hidden data-visibility-input />
+                        <button
+                          class="atlas-remove-toggle"
+                          type="button"
+                          data-remove-module
+                          aria-label="Remove {{ module.title }} from portal"
+                          title="Remove module"
+                        >&times;</button>
+                      </div>
+                    </div>
+                    <div class="atlas-preview-card-controls">
+                      <label class="atlas-inline-field">
+                        <span>Size:</span>
+                        <select name="module_span_{{ module.key }}" data-span-select>
+                          <option value="1"{% if module.span == 1 %} selected{% endif %}>1</option>
+                          <option value="2"{% if module.span == 2 %} selected{% endif %}>2</option>
+                          <option value="3"{% if module.span == 3 %} selected{% endif %}>3</option>
+                        </select>
+                      </label>
+                    </div>
+                    {{ render_module_settings(module, category_options, available_pages, available_collections) }}
+                  </article>
+                {% endfor %}
+              </div>
+            </div>
+          </section>
+
+        </section>
+
+        <aside class="world-editor-aside">
+          <section class="codex-card world-editor-side-card">
+            <h3>Portal Actions</h3>
+            <div class="world-editor-action-stack">
+              <button class="primary-btn wide" type="submit">Save Portal</button>
+            </div>
+            <p class="world-editor-side-copy">Drag modules into the order you want, choose their column span, and use the eye toggle to control whether they appear on the portal.</p>
+          </section>
+        </aside>
+      </div>
+    </form>
+    <div class="atlas-module-modal-backdrop" id="atlasModulePickerBackdrop" hidden>
+      <div class="codex-card atlas-module-modal" role="dialog" aria-modal="true" aria-labelledby="atlasModulePickerTitle">
+        <div class="atlas-module-modal-head">
+          <div>
+            <h3 id="atlasModulePickerTitle">Add Modules</h3>
+            <p class="atlas-settings-note">Select the modules you want, choose their sizes, then add them to the portal.</p>
+          </div>
+          <button class="atlas-remove-toggle" type="button" id="closeAtlasModulePicker" aria-label="Close module picker" title="Close">&times;</button>
+        </div>
+        {% if available_module_rows %}
+          <div class="atlas-module-library atlas-module-modal-list" id="atlasModuleLibrary">
+            {% for module in available_module_rows %}
+              <article class="atlas-module-library-card atlas-module-select-card" data-library-module data-module-key="{{ module.key }}" data-module-title="{{ module.title|e }}">
+                <div class="atlas-module-library-head atlas-module-select-head">
+                  <label class="atlas-module-select-toggle">
+                    <input type="checkbox" data-library-select />
+                    <strong>{{ module.title }}</strong>
+                  </label>
+                </div>
+                <p class="atlas-settings-note">{{ module.description }}</p>
+                <div class="atlas-module-library-controls">
+                  <label class="atlas-inline-field">
+                    <span>Size:</span>
+                    <select data-library-span>
+                      <option value="1"{% if module.default_span == 1 %} selected{% endif %}>1</option>
+                      <option value="2"{% if module.default_span == 2 %} selected{% endif %}>2</option>
+                      <option value="3"{% if module.default_span == 3 %} selected{% endif %}>3</option>
+                    </select>
+                  </label>
+                </div>
+                <template data-module-settings-template>{{ render_module_settings(module, category_options, available_pages, available_collections) }}</template>
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div id="atlasModuleLibrary"></div>
+        {% endif %}
+        <p class="feed-empty{% if available_module_rows %} hidden-helper{% endif %}" id="atlasModuleLibraryEmpty">All available modules are already on the portal.</p>
+        <div class="atlas-module-modal-actions">
+          <button class="primary-btn" type="button" id="confirmAtlasModuleAdd">Add Selected</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script>
+    (() => {
+      const moduleList = document.getElementById("atlasLayoutModuleList");
+      const moduleLibrary = document.getElementById("atlasModuleLibrary");
+      const libraryEmpty = document.getElementById("atlasModuleLibraryEmpty");
+      const openModulePickerButton = document.getElementById("openAtlasModulePicker");
+      const modulePickerBackdrop = document.getElementById("atlasModulePickerBackdrop");
+      const closeModulePickerButton = document.getElementById("closeAtlasModulePicker");
+      const confirmModuleAddButton = document.getElementById("confirmAtlasModuleAdd");
+      const atlasTitleInput = document.getElementById("worldAtlasTitleInput");
+      const atlasIntroInput = document.getElementById("worldAtlasIntroInput");
+      const atlasPreviewTitle = document.getElementById("atlasPreviewTitle");
+      const atlasPreviewIntro = document.getElementById("atlasPreviewIntro");
+
+      if (!moduleList) return;
+
+      let draggedCard = null;
+
+      function cards() {
+        return Array.from(moduleList.querySelectorAll("[data-layout-module]"));
+      }
+
+      function syncOrderInputs() {
+        cards().forEach((card, index) => {
+          const input = card.querySelector("[data-layout-order-input]");
+          if (input) input.value = String(index + 1);
+        });
+      }
+
+      function syncHeaderPreview() {
+        if (atlasPreviewTitle && atlasTitleInput) {
+          atlasPreviewTitle.textContent = atlasTitleInput.value.trim() || "{{ campaign.name }}";
+        }
+        if (atlasPreviewIntro && atlasIntroInput) {
+          atlasPreviewIntro.textContent = atlasIntroInput.value.trim() || "Describe what this World Atlas Portal is for.";
+        }
+      }
+
+      function updateLibraryEmptyState() {
+        if (!libraryEmpty) return;
+        const hasItems = moduleLibrary && moduleLibrary.querySelector("[data-library-module]");
+        libraryEmpty.hidden = Boolean(hasItems);
+      }
+
+      function openModulePicker() {
+        if (!modulePickerBackdrop) return;
+        modulePickerBackdrop.hidden = false;
+      }
+
+      function closeModulePicker() {
+        if (!modulePickerBackdrop) return;
+        modulePickerBackdrop.hidden = true;
+      }
+
+      function syncSettingsMarkup(settingsContainer) {
+        if (!settingsContainer) return "";
+        const clone = settingsContainer.cloneNode(true);
+        clone.querySelectorAll("textarea").forEach((textarea) => {
+          textarea.textContent = textarea.value;
+        });
+        clone.querySelectorAll("input").forEach((input) => {
+          if (input.type === "checkbox") {
+            if (input.checked) {
+              input.setAttribute("checked", "");
+            } else {
+              input.removeAttribute("checked");
+            }
+          } else if (input.type !== "hidden") {
+            input.setAttribute("value", input.value);
+          }
+        });
+        clone.querySelectorAll("select").forEach((select) => {
+          Array.from(select.options).forEach((option) => {
+            if (option.value === select.value) {
+              option.setAttribute("selected", "");
+            } else {
+              option.removeAttribute("selected");
+            }
+          });
+        });
+        return clone.outerHTML;
+      }
+
+      function wireCard(card) {
+        card.addEventListener("dragstart", () => {
+          draggedCard = card;
+          card.classList.add("is-dragging");
+        });
+
+        card.addEventListener("dragend", () => {
+          card.classList.remove("is-dragging");
+          draggedCard = null;
+          syncOrderInputs();
+        });
+
+        card.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          if (!draggedCard || draggedCard === card) return;
+          const bounds = card.getBoundingClientRect();
+          const shouldInsertBefore = event.clientY < bounds.top + bounds.height / 2;
+          moduleList.insertBefore(draggedCard, shouldInsertBefore ? card : card.nextSibling);
+        });
+
+        const visibilityButton = card.querySelector("[data-visibility-toggle]");
+        const visibilityInput = card.querySelector("[data-visibility-input]");
+        const spanSelect = card.querySelector("[data-span-select]");
+        const removeButton = card.querySelector("[data-remove-module]");
+
+        visibilityButton?.addEventListener("click", () => {
+          if (!visibilityInput) return;
+          visibilityInput.checked = !visibilityInput.checked;
+          visibilityButton.classList.toggle("is-visible", visibilityInput.checked);
+          visibilityButton.setAttribute("aria-pressed", visibilityInput.checked ? "true" : "false");
+        });
+
+        spanSelect?.addEventListener("change", () => {
+          card.classList.remove("atlas-preview-span-1", "atlas-preview-span-2", "atlas-preview-span-3");
+          card.classList.add(`atlas-preview-span-${spanSelect.value || "1"}`);
+        });
+
+        removeButton?.addEventListener("click", () => {
+          const key = card.getAttribute("data-module-key") || "";
+          const title = card.querySelector(".atlas-preview-card-title-wrap strong")?.textContent?.trim() || "Module";
+          const span = spanSelect?.value || "1";
+          const settingsMarkup = syncSettingsMarkup(card.querySelector("[data-module-settings]"));
+          if (moduleLibrary) {
+            moduleLibrary.appendChild(createLibraryCard(key, title, span, settingsMarkup));
+          }
+          card.remove();
+          syncOrderInputs();
+          updateLibraryEmptyState();
+        });
+      }
+
+      function wireCollectionManager(manager) {
+        if (!manager) return;
+        const activeList = manager.querySelector("[data-collection-active-list]");
+        const library = manager.querySelector("[data-collection-library]");
+        const emptyNotice = manager.querySelector("[data-collection-library-empty]");
+        if (!activeList || !library) return;
+
+        let draggedCollection = null;
+
+        function activeCards() {
+          return Array.from(activeList.querySelectorAll("[data-collection-card]"));
+        }
+
+        function updateEmptyNotice() {
+          if (!emptyNotice) return;
+          emptyNotice.hidden = Boolean(library.querySelector("[data-library-collection]"));
+        }
+
+        function createLibraryCollectionCard(id, title, preview) {
+          const card = document.createElement("article");
+          card.className = "atlas-module-library-card";
+          card.setAttribute("data-library-collection", "");
+          card.setAttribute("data-collection-id", id);
+          card.setAttribute("data-collection-title", title);
+          card.setAttribute("data-collection-preview", preview);
+          card.innerHTML = `
+            <div class="atlas-module-library-head">
+              <strong>${title}</strong>
+            </div>
+            <p class="atlas-settings-note">${preview}</p>
+            <div class="atlas-module-library-controls">
+              <button class="ghost-btn small-button" type="button" data-add-collection>Add Collection</button>
+            </div>
+          `;
+          return card;
+        }
+
+        function createActiveCollectionCard(id, title, preview) {
+          const card = document.createElement("article");
+          card.className = "atlas-collection-card";
+          card.setAttribute("data-collection-card", "");
+          card.setAttribute("data-collection-id", id);
+          card.setAttribute("draggable", "true");
+          card.innerHTML = `
+            <input type="hidden" name="module_setting_featured_collections_collection_ids" value="${id}" />
+            <div class="atlas-collection-card-head">
+              <div class="atlas-preview-card-title-wrap">
+                <button class="atlas-layout-handle" type="button" aria-label="Reorder ${title}" title="Drag to reorder">&#9776;</button>
+                <strong>${title}</strong>
+              </div>
+              <button class="atlas-remove-toggle" type="button" data-remove-collection aria-label="Remove ${title}" title="Remove collection">&times;</button>
+            </div>
+            <p>${preview}</p>
+          `;
+          wireCollectionCard(card);
+          return card;
+        }
+
+        function wireCollectionCard(card) {
+          card.addEventListener("dragstart", () => {
+            draggedCollection = card;
+            card.classList.add("is-dragging");
+          });
+
+          card.addEventListener("dragend", () => {
+            card.classList.remove("is-dragging");
+            draggedCollection = null;
+          });
+
+          card.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            if (!draggedCollection || draggedCollection === card) return;
+            const bounds = card.getBoundingClientRect();
+            const shouldInsertBefore = event.clientY < bounds.top + bounds.height / 2;
+            activeList.insertBefore(draggedCollection, shouldInsertBefore ? card : card.nextSibling);
+          });
+
+          const removeButton = card.querySelector("[data-remove-collection]");
+          removeButton?.addEventListener("click", () => {
+            const id = card.getAttribute("data-collection-id") || "";
+            const title = card.querySelector(".atlas-collection-card-head strong")?.textContent?.trim() || "Collection";
+            const preview = card.querySelector("p")?.textContent?.trim() || "No collection preview line yet.";
+            library.appendChild(createLibraryCollectionCard(id, title, preview));
+            card.remove();
+            updateEmptyNotice();
+          });
+        }
+
+        activeCards().forEach(wireCollectionCard);
+        updateEmptyNotice();
+
+        library.addEventListener("click", (event) => {
+          const button = event.target.closest("[data-add-collection]");
+          if (!button) return;
+          const libraryCard = button.closest("[data-library-collection]");
+          if (!libraryCard) return;
+          const id = libraryCard.getAttribute("data-collection-id") || "";
+          const title = libraryCard.getAttribute("data-collection-title") || "Collection";
+          const preview = libraryCard.getAttribute("data-collection-preview") || "No collection preview line yet.";
+          activeList.appendChild(createActiveCollectionCard(id, title, preview));
+          libraryCard.remove();
+          updateEmptyNotice();
+        });
+      }
+
+      function createModuleCard(key, title, span, settingsHtml) {
+        const card = document.createElement("article");
+        card.className = `atlas-preview-card atlas-preview-span-${span}`;
+        card.setAttribute("data-layout-module", "");
+        card.setAttribute("data-module-key", key);
+        card.setAttribute("draggable", "true");
+        card.innerHTML = `
+          <input type="hidden" name="active_module_keys" value="${key}" />
+          <input type="hidden" name="module_order_${key}" value="0" data-layout-order-input />
+          <div class="atlas-preview-card-head atlas-preview-card-head-editable">
+            <div class="atlas-preview-card-title-wrap">
+              <button class="atlas-layout-handle" type="button" aria-label="Reorder ${title}" title="Drag to reorder">&#9776;</button>
+              <strong>${title}</strong>
+            </div>
+            <div class="atlas-preview-card-actions">
+              <button
+                class="atlas-visibility-toggle is-visible"
+                type="button"
+                data-visibility-toggle
+                aria-label="Toggle ${title} visibility"
+                aria-pressed="true"
+                title="Toggle visibility"
+              >&#128065;</button>
+              <input type="checkbox" name="module_visible_${key}" checked hidden data-visibility-input />
+              <button
+                class="atlas-remove-toggle"
+                type="button"
+                data-remove-module
+                aria-label="Remove ${title} from portal"
+                title="Remove module"
+              >&times;</button>
+            </div>
+          </div>
+          <div class="atlas-preview-card-controls">
+            <label class="atlas-inline-field">
+              <span>Size:</span>
+              <select name="module_span_${key}" data-span-select>
+                <option value="1"${span === "1" ? " selected" : ""}>1</option>
+                <option value="2"${span === "2" ? " selected" : ""}>2</option>
+                <option value="3"${span === "3" ? " selected" : ""}>3</option>
+              </select>
+            </label>
+          </div>
+          ${settingsHtml || '<div class="atlas-preview-card-settings" data-module-settings></div>'}
+        `;
+        wireCard(card);
+        return card;
+      }
+
+      function createLibraryCard(key, title, defaultSpan, settingsHtml) {
+        const libraryCard = document.createElement("article");
+        libraryCard.className = "atlas-module-library-card atlas-module-select-card";
+        libraryCard.setAttribute("data-library-module", "");
+        libraryCard.setAttribute("data-module-key", key);
+        libraryCard.setAttribute("data-module-title", title);
+        libraryCard.innerHTML = `
+          <div class="atlas-module-library-head atlas-module-select-head">
+            <label class="atlas-module-select-toggle">
+              <input type="checkbox" data-library-select />
+              <strong>${title}</strong>
+            </label>
+          </div>
+          <div class="atlas-module-library-controls">
+            <label class="atlas-inline-field">
+              <span>Size:</span>
+              <select data-library-span>
+                <option value="1"${defaultSpan === "1" ? " selected" : ""}>1</option>
+                <option value="2"${defaultSpan === "2" ? " selected" : ""}>2</option>
+                <option value="3"${defaultSpan === "3" ? " selected" : ""}>3</option>
+              </select>
+            </label>
+          </div>
+          <template data-module-settings-template>${settingsHtml || ""}</template>
+        `;
+        return libraryCard;
+      }
+
+      cards().forEach(wireCard);
+      Array.from(document.querySelectorAll("[data-collection-manager]")).forEach(wireCollectionManager);
+      syncOrderInputs();
+      syncHeaderPreview();
+      updateLibraryEmptyState();
+
+      atlasTitleInput?.addEventListener("input", syncHeaderPreview);
+      atlasIntroInput?.addEventListener("input", syncHeaderPreview);
+
+      openModulePickerButton?.addEventListener("click", openModulePicker);
+      closeModulePickerButton?.addEventListener("click", closeModulePicker);
+      modulePickerBackdrop?.addEventListener("click", (event) => {
+        if (event.target === modulePickerBackdrop) {
+          closeModulePicker();
+        }
+      });
+
+      confirmModuleAddButton?.addEventListener("click", () => {
+        if (!moduleLibrary) return;
+        const selectedLibraryCards = Array.from(moduleLibrary.querySelectorAll("[data-library-module]")).filter((card) => {
+          return Boolean(card.querySelector("[data-library-select]")?.checked);
+        });
+        if (!selectedLibraryCards.length) {
+          closeModulePicker();
+          return;
+        }
+
+        const cardsToAdd = cards().length === 0 ? selectedLibraryCards.sort(() => Math.random() - 0.5) : selectedLibraryCards;
+        cardsToAdd.forEach((libraryCard) => {
+          const key = libraryCard.getAttribute("data-module-key") || "";
+          const title = libraryCard.getAttribute("data-module-title") || "Module";
+          const span = libraryCard.querySelector("[data-library-span]")?.value || "1";
+          const settingsHtml = libraryCard.querySelector("[data-module-settings-template]")?.innerHTML || "";
+          const newCard = createModuleCard(key, title, span, settingsHtml);
+          moduleList.appendChild(newCard);
+          libraryCard.remove();
+        });
+        syncOrderInputs();
+        updateLibraryEmptyState();
+        closeModulePicker();
+      });
+    })();
+  </script>
+{% endblock %}

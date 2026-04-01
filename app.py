@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import json
+import random
 import re
 import secrets
 import uuid
@@ -35,6 +36,61 @@ PROTOTYPE_SEED_USERS = [
     },
 ]
 
+USER_SETTINGS_DEFAULTS = {
+    "profile_image_url": "",
+    "pronouns": "",
+    "default_note_visibility": "private",
+    "ui_density": "comfortable",
+    "spoken_language": "English",
+    "timezone": "America/New_York",
+}
+
+DEFAULT_WORLD_ATLAS_INTRO = (
+    "A worldbuilding hub for lore, cultures, factions, regions, and character dossiers. "
+    "This atlas gives the campaign a single place to browse the setting."
+)
+
+WORLD_ATLAS_PORTAL_MODULE_SETTING_DEFAULTS: dict[str, dict[str, Any]] = {
+    "featured_collections": {
+        "collection_ids": [],
+        "configured": False,
+    },
+    "recent_pages": {
+        "title": "Recent Pages",
+        "preview_line": "Fresh additions to the World Atlas Portal.",
+        "category_key": "all",
+        "count": "6",
+        "display_style": "cards",
+    },
+    "image_feature": {
+        "title": "Image Feature",
+        "image_url": "",
+        "image_alignment": "right",
+        "body": "",
+        "button_label": "",
+        "button_href": "",
+    },
+    "rich_text_block": {
+        "title": "Lore Block",
+        "body": "",
+        "style": "standard",
+    },
+    "featured_page": {
+        "title": "Featured Page",
+        "page_id": "",
+        "show_category": True,
+        "show_preview_line": True,
+        "show_image": True,
+    },
+    "category_spotlight": {
+        "title": "Category Spotlight",
+        "category_key": "gods",
+        "count": "5",
+        "sort_mode": "alphabetical",
+        "display_style": "list",
+    },
+}
+
 
 def ensure_data_file() -> None:
     DATA_DIR.mkdir(exist_ok=True)
@@ -46,6 +102,7 @@ def ensure_data_file() -> None:
         "announcements": [],
         "notes": [],
         "wiki_pages": [],
+        "world_collections": [],
         "quest_acceptances": [],
     }
     if not DATA_FILE.exists():
@@ -59,10 +116,23 @@ def ensure_data_file() -> None:
             existing[key] = value
             changed = True
 
+    for user in existing.get("users", []):
+        for key, value in USER_SETTINGS_DEFAULTS.items():
+            if key not in user:
+                user[key] = value
+                changed = True
+
     membership_defaults = {
         "notable_proficiencies": "",
         "death_save_successes": "0",
         "death_save_failures": "0",
+        "saving_throw_proficiencies": "",
+        "armor_training": "",
+        "weapon_training": "",
+        "tool_training": "",
+        "languages": "",
+        "features_traits": "",
+        "inventory_items": [],
     }
     for membership in existing.get("memberships", []):
         for key, value in membership_defaults.items():
@@ -89,9 +159,113 @@ def ensure_data_file() -> None:
                 changed = True
 
     for campaign in existing.get("campaigns", []):
+        added_featured_lore_field = False
         if "world_editor_presets" not in campaign:
             campaign["world_editor_presets"] = {}
             changed = True
+        if "world_atlas_module_settings" not in campaign:
+            campaign["world_atlas_module_settings"] = {}
+            changed = True
+        if "featured_lore_entry_ids" not in campaign:
+            campaign["featured_lore_entry_ids"] = []
+            added_featured_lore_field = True
+            changed = True
+
+        if added_featured_lore_field and not campaign.get("featured_lore_entry_ids"):
+            campaign_pages = [page for page in existing["wiki_pages"] if page.get("campaign_id") == campaign["id"]]
+            preferred_titles = [
+                "Aetheria, Realm of the Maelstrom",
+                "The Divine Pantheon of Aetheria",
+                "Continents of Aetheria",
+            ]
+            seeded_ids = [page["id"] for title in preferred_titles for page in campaign_pages if page.get("title") == title]
+            if seeded_ids:
+                campaign["featured_lore_entry_ids"] = seeded_ids[:5]
+                changed = True
+        if "world_atlas_title" not in campaign:
+            campaign["world_atlas_title"] = ""
+            changed = True
+        if "world_atlas_intro" not in campaign:
+            campaign["world_atlas_intro"] = ""
+            changed = True
+        if "world_atlas_layout" not in campaign:
+            campaign["world_atlas_layout"] = []
+            changed = True
+
+    for collection in existing.get("world_collections", []):
+        collection_defaults = {
+            "preview_line": "",
+            "body": "",
+            "entry_ids": [],
+            "created_at": "",
+            "updated_at": "",
+        }
+        for key, value in collection_defaults.items():
+            if key not in collection:
+                collection[key] = value
+                changed = True
+
+    if not existing.get("world_collections"):
+        gods_entry = next((page for page in existing["wiki_pages"] if page.get("title") == "The Divine Pantheon of Aetheria"), None)
+        places_entry = next((page for page in existing["wiki_pages"] if page.get("title") == "Continents of Aetheria"), None)
+        factions_entry = next((page for page in existing["wiki_pages"] if page.get("title") == "Factions of Aetheria"), None)
+        culture_entry = next((page for page in existing["wiki_pages"] if page.get("title") == "Races of Aetheria"), None)
+
+        pantheon_titles = {"Aegis", "Aquila", "Aurora", "Chronos", "Ignatius", "Lunara", "Nimbus", "Ororo", "Stellaris", "Sylvana", "Terra", "Thanatos"}
+        place_titles = {"Celestia", "Stormhold", "The Azure Citadel", "The Elysium Reach", "The Maelstrom", "The Whispering Isles"}
+        faction_titles = {"Celestial Council", "Council Of Archmages", "The Divine Pantheon"}
+        culture_titles = {"Avis", "Dragonborn", "Dwarves", "Eternals", "Gnomes", "Goblins", "God", "Goliaths", "Haren", "High Elves", "Humans", "Leonin", "Orcs", "Satyrs", "Shadowkin Elves"}
+
+        for campaign in existing.get("campaigns", []):
+            campaign_pages = [page for page in existing["wiki_pages"] if page.get("campaign_id") == campaign["id"]]
+
+            def matching_ids(page_titles: set[str]) -> list[str]:
+                return [page["id"] for page in campaign_pages if page.get("title") in page_titles]
+
+            defaults = [
+                {
+                    "seed_page": gods_entry,
+                    "title": "The Divine Pantheon of Aetheria",
+                    "preview_line": "A featured collection gathering the known gods, deities, and divine powers of Aetheria.",
+                    "entry_ids": matching_ids(pantheon_titles),
+                },
+                {
+                    "seed_page": places_entry,
+                    "title": "Continents of Aetheria",
+                    "preview_line": "A featured collection of the major continents, realms, and distant frontiers of the world.",
+                    "entry_ids": matching_ids(place_titles),
+                },
+                {
+                    "seed_page": factions_entry,
+                    "title": "Factions of Aetheria",
+                    "preview_line": "A featured collection of the councils, orders, and power blocs shaping the setting.",
+                    "entry_ids": matching_ids(faction_titles),
+                },
+                {
+                    "seed_page": culture_entry,
+                    "title": "Races of Aetheria",
+                    "preview_line": "A featured collection of the peoples and cultures known across Aetheria.",
+                    "entry_ids": matching_ids(culture_titles),
+                },
+            ]
+
+            for item in defaults:
+                seed_page = item["seed_page"]
+                if seed_page is None:
+                    continue
+                existing["world_collections"].append(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "campaign_id": campaign["id"],
+                        "title": item["title"],
+                        "preview_line": item["preview_line"],
+                        "body": seed_page.get("content", ""),
+                        "entry_ids": item["entry_ids"],
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+                changed = True
 
     existing_emails = {user["email"].lower() for user in existing["users"]}
     for seed_user in PROTOTYPE_SEED_USERS:
@@ -104,6 +278,7 @@ def ensure_data_file() -> None:
                 "display_name": seed_user["display_name"],
                 "password_hash": generate_password_hash(seed_user["password"]),
                 "role": seed_user["role"],
+                **USER_SETTINGS_DEFAULTS,
             }
         )
         changed = True
@@ -131,6 +306,11 @@ def get_user_by_id(data: dict[str, list[dict[str, Any]]], user_id: str) -> dict[
 
 def get_user_by_email(data: dict[str, list[dict[str, Any]]], email: str) -> dict[str, Any] | None:
     return next((user for user in data["users"] if user["email"].lower() == email.lower()), None)
+
+
+def get_user_by_display_name(data: dict[str, list[dict[str, Any]]], display_name: str) -> dict[str, Any] | None:
+    normalized = display_name.strip().lower()
+    return next((user for user in data["users"] if user["display_name"].lower() == normalized), None)
 
 
 def get_user_by_login(data: dict[str, list[dict[str, Any]]], login_value: str) -> dict[str, Any] | None:
@@ -177,6 +357,12 @@ def get_membership_by_id(data: dict[str, list[dict[str, Any]]], membership_id: s
     return next((membership for membership in data["memberships"] if membership["id"] == membership_id), None)
 
 
+def can_manage_membership(user: dict[str, Any], membership: dict[str, Any], campaign: dict[str, Any] | None) -> bool:
+    if user["role"] == "dm":
+        return campaign is not None and campaign.get("dm_user_id") == user["id"]
+    return membership.get("user_id") == user["id"]
+
+
 def get_player_memberships(data: dict[str, list[dict[str, Any]]], user_id: str) -> list[dict[str, Any]]:
     return [membership for membership in data["memberships"] if membership["user_id"] == user_id]
 
@@ -195,6 +381,66 @@ def get_campaign_wiki_pages(data: dict[str, list[dict[str, Any]]], campaign_id: 
 
 def get_wiki_page_by_id(data: dict[str, list[dict[str, Any]]], page_id: str) -> dict[str, Any] | None:
     return next((page for page in data["wiki_pages"] if page["id"] == page_id), None)
+
+
+def get_campaign_world_collections(data: dict[str, list[dict[str, Any]]], campaign_id: str) -> list[dict[str, Any]]:
+    return [item for item in data["world_collections"] if item["campaign_id"] == campaign_id]
+
+
+def get_world_collection_by_id(data: dict[str, list[dict[str, Any]]], collection_id: str) -> dict[str, Any] | None:
+    return next((collection for collection in data["world_collections"] if collection["id"] == collection_id), None)
+
+
+def is_world_atlas_page(page: dict[str, Any]) -> bool:
+    return page.get("source") != "quest_broadcast"
+
+
+def get_campaign_atlas_pages(data: dict[str, list[dict[str, Any]]], campaign_id: str) -> list[dict[str, Any]]:
+    return [page for page in get_campaign_wiki_pages(data, campaign_id) if is_world_atlas_page(page)]
+
+
+def get_visible_campaign_atlas_pages(
+    data: dict[str, list[dict[str, Any]]], campaign_id: str, user: dict[str, Any]
+) -> list[dict[str, Any]]:
+    return [page for page in get_visible_campaign_wiki_pages(data, campaign_id, user) if is_world_atlas_page(page)]
+
+
+def get_campaign_featured_lore_entries(
+    data: dict[str, list[dict[str, Any]]],
+    campaign: dict[str, Any] | None,
+    user: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if campaign is None:
+        return []
+
+    pages_by_id = {page["id"]: page for page in get_campaign_atlas_pages(data, campaign["id"])}
+    selected_ids = [str(item) for item in campaign.get("featured_lore_entry_ids", [])]
+    visible_pages: list[dict[str, Any]] = []
+
+    for page_id in selected_ids:
+        page = pages_by_id.get(page_id)
+        if page is None:
+            continue
+        if user is not None and not can_user_view_world_page(data, user, page):
+            continue
+        visible_pages.append(page)
+
+    if not visible_pages:
+        fallback_pages = list(pages_by_id.values())
+        if user is not None:
+            fallback_pages = [page for page in fallback_pages if can_user_view_world_page(data, user, page)]
+        random.shuffle(fallback_pages)
+        visible_pages = fallback_pages[: min(5, len(fallback_pages))]
+
+    return decorate_world_entries(data, visible_pages)
+
+
+def clamp_int(value: Any, default: int, minimum: int, maximum: int) -> int:
+    try:
+        number = int(str(value).strip())
+    except (TypeError, ValueError):
+        number = default
+    return max(minimum, min(maximum, number))
 
 
 def get_campaign_player_targets(data: dict[str, list[dict[str, Any]]], campaign_id: str) -> list[dict[str, str]]:
@@ -227,6 +473,7 @@ def build_character_wiki_content(membership: dict[str, Any]) -> str:
             f"Species: {membership.get('species') or 'Unknown'}",
             f"Background: {membership.get('background') or 'Unknown'}",
             f"Notable Proficiencies: {membership.get('notable_proficiencies') or 'Unknown'}",
+            f"Saving Throw Proficiencies: {membership.get('saving_throw_proficiencies') or 'Unknown'}",
             f"Armor Class: {membership.get('armor_class') or 'Unknown'}",
             f"Speed: {membership.get('speed') or 'Unknown'}",
             f"Max Hit Points: {membership.get('max_hit_points') or 'Unknown'}",
@@ -237,6 +484,10 @@ def build_character_wiki_content(membership: dict[str, Any]) -> str:
             f"Passive Insight: {membership.get('passive_insight') or 'Unknown'}",
             f"Initiative Bonus: {membership.get('initiative_bonus') or 'Unknown'}",
             f"Proficiency Bonus: {membership.get('proficiency_bonus') or 'Unknown'}",
+            f"Armor Training: {membership.get('armor_training') or 'Unknown'}",
+            f"Weapon Training: {membership.get('weapon_training') or 'Unknown'}",
+            f"Tool Training: {membership.get('tool_training') or 'Unknown'}",
+            f"Languages: {membership.get('languages') or 'Unknown'}",
             "",
             "## Ability Scores",
             f"Strength: {membership.get('strength') or 'Unknown'}",
@@ -245,6 +496,9 @@ def build_character_wiki_content(membership: dict[str, Any]) -> str:
             f"Intelligence: {membership.get('intelligence') or 'Unknown'}",
             f"Wisdom: {membership.get('wisdom') or 'Unknown'}",
             f"Charisma: {membership.get('charisma') or 'Unknown'}",
+            "",
+            "## Features & Traits",
+            membership.get("features_traits") or "No features have been added yet.",
         ]
     )
 
@@ -293,6 +547,13 @@ def ability_modifier(value: Any) -> str:
         return "—"
     modifier = (score - 10) // 2
     return f"{modifier:+d}"
+
+
+def ability_modifier_value(value: Any) -> int:
+    score = parse_ability_score(value)
+    if score is None:
+        return 0
+    return (score - 10) // 2
 
 
 def build_ability_cells(membership: dict[str, Any]) -> list[dict[str, str]]:
@@ -359,6 +620,167 @@ def build_summary_notable_proficiencies(raw_value: Any, limit: int = 4) -> list[
         reverse=True,
     )
     return ranked[:limit]
+
+
+ABILITY_FIELD_BY_LABEL = {
+    "STR": "strength",
+    "DEX": "dexterity",
+    "CON": "constitution",
+    "INT": "intelligence",
+    "WIS": "wisdom",
+    "CHA": "charisma",
+}
+
+SAVE_LABELS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+
+SKILL_DEFINITIONS = [
+    {"name": "Acrobatics", "ability": "DEX"},
+    {"name": "Animal Handling", "ability": "WIS"},
+    {"name": "Arcana", "ability": "INT"},
+    {"name": "Athletics", "ability": "STR"},
+    {"name": "Deception", "ability": "CHA"},
+    {"name": "History", "ability": "INT"},
+    {"name": "Insight", "ability": "WIS"},
+    {"name": "Intimidation", "ability": "CHA"},
+    {"name": "Investigation", "ability": "INT"},
+    {"name": "Medicine", "ability": "WIS"},
+    {"name": "Nature", "ability": "INT"},
+    {"name": "Perception", "ability": "WIS"},
+    {"name": "Performance", "ability": "CHA"},
+    {"name": "Persuasion", "ability": "CHA"},
+    {"name": "Religion", "ability": "INT"},
+    {"name": "Sleight Of Hand", "ability": "DEX"},
+    {"name": "Stealth", "ability": "DEX"},
+    {"name": "Survival", "ability": "WIS"},
+]
+
+
+def normalize_lookup_name(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
+
+
+def parse_number_string(value: Any, *, minimum: int | None = None, maximum: int | None = None, default: int = 0) -> int:
+    cleaned = str(value or "").strip().replace("+", "")
+    try:
+        numeric = int(cleaned)
+    except (TypeError, ValueError):
+        numeric = default
+    if minimum is not None:
+        numeric = max(minimum, numeric)
+    if maximum is not None:
+        numeric = min(maximum, numeric)
+    return numeric
+
+
+def format_signed_value(value: int) -> str:
+    return f"{value:+d}"
+
+
+def parse_name_list(value: Any) -> list[str]:
+    items: list[str] = []
+    for part in re.split(r"[\n,]+", str(value or "")):
+        cleaned = part.strip()
+        if cleaned:
+            items.append(cleaned)
+    return items
+
+
+def build_skill_training_map(raw_value: Any) -> dict[str, dict[str, str]]:
+    entries = parse_notable_proficiencies(raw_value)
+    training_map: dict[str, dict[str, str]] = {}
+    for entry in entries:
+        normalized = normalize_lookup_name(entry.get("name", ""))
+        if not normalized:
+            continue
+        training_map[normalized] = entry
+    return training_map
+
+
+def build_skill_rows(membership: dict[str, Any]) -> list[dict[str, str]]:
+    proficiency_bonus = parse_number_string(membership.get("proficiency_bonus", "0"), default=0)
+    training_map = build_skill_training_map(membership.get("notable_proficiencies"))
+    rows: list[dict[str, str]] = []
+    for skill in SKILL_DEFINITIONS:
+        ability_label = skill["ability"]
+        ability_field = ABILITY_FIELD_BY_LABEL[ability_label]
+        base_modifier = ability_modifier_value(membership.get(ability_field, ""))
+        training = training_map.get(normalize_lookup_name(skill["name"]), {})
+        tier = str(training.get("tier", "")).strip() or "—"
+        tier_key = tier.lower()
+        total_modifier = base_modifier
+        if tier_key == "proficient":
+            total_modifier += proficiency_bonus
+        elif tier_key == "expertise":
+            total_modifier += proficiency_bonus * 2
+        elif tier_key == "half proficient":
+            total_modifier += proficiency_bonus // 2
+        rows.append(
+            {
+                "name": skill["name"],
+                "ability": ability_label,
+                "tier": tier,
+                "modifier": format_signed_value(total_modifier),
+            }
+        )
+    return rows
+
+
+def build_saving_throw_rows(membership: dict[str, Any]) -> list[dict[str, str]]:
+    proficiency_bonus = parse_number_string(membership.get("proficiency_bonus", "0"), default=0)
+    proficient_saves = {normalize_lookup_name(item) for item in parse_name_list(membership.get("saving_throw_proficiencies", ""))}
+    rows: list[dict[str, str]] = []
+    for label in SAVE_LABELS:
+        field = ABILITY_FIELD_BY_LABEL[label]
+        total_modifier = ability_modifier_value(membership.get(field, ""))
+        is_proficient = normalize_lookup_name(label) in proficient_saves or normalize_lookup_name(field) in proficient_saves
+        if is_proficient:
+            total_modifier += proficiency_bonus
+        rows.append(
+            {
+                "label": label,
+                "modifier": format_signed_value(total_modifier),
+                "proficient": is_proficient,
+            }
+        )
+    return rows
+
+
+def normalize_inventory_items(raw_items: Any) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    if not isinstance(raw_items, list):
+        return items
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict):
+            continue
+        name = str(raw_item.get("name", "")).strip()
+        if not name:
+            continue
+        items.append(
+            {
+                "id": str(raw_item.get("id") or uuid.uuid4()),
+                "name": name,
+                "quantity": max(1, parse_number_string(raw_item.get("quantity", 1), minimum=1, default=1)),
+                "description": str(raw_item.get("description", "")).strip(),
+                "equipped": bool(raw_item.get("equipped", False)),
+                "source": str(raw_item.get("source", "")).strip(),
+            }
+        )
+    return items
+
+
+def build_inventory_items(membership: dict[str, Any]) -> list[dict[str, Any]]:
+    items = normalize_inventory_items(membership.get("inventory_items", []))
+    membership["inventory_items"] = items
+    return items
+
+
+def build_training_sections(membership: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {"title": "Armor", "value": membership.get("armor_training", "").strip() or "No armor training listed."},
+        {"title": "Weapons", "value": membership.get("weapon_training", "").strip() or "No weapon training listed."},
+        {"title": "Tools", "value": membership.get("tool_training", "").strip() or "No tool proficiencies listed."},
+        {"title": "Languages", "value": membership.get("languages", "").strip() or "No languages listed."},
+    ]
 
 
 def parse_counter(value: Any, *, minimum: int = 0, maximum: int = 3) -> int:
@@ -659,6 +1081,98 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def handle_world_collection_editor(collection_id: str | None):
+    data = load_data()
+    campaign = get_active_dm_campaign(data, g.user["id"])
+    if campaign is None:
+        flash("Create or switch to a campaign before editing featured collections.", "error")
+        return redirect(url_for("campaigns_page"))
+
+    collection = get_world_collection_by_id(data, collection_id) if collection_id else None
+    if collection is not None and collection.get("campaign_id") != campaign["id"]:
+        flash("That featured collection is not part of the active campaign.", "error")
+        return redirect(url_for("world_atlas"))
+
+    available_entries = decorate_world_entries(data, get_campaign_atlas_pages(data, campaign["id"]))
+    selected_entry_ids = set(str(item) for item in (collection.get("entry_ids", []) if collection else []))
+    form_values = {
+        "title": collection.get("title", "") if collection else "",
+        "preview_line": collection.get("preview_line", "") if collection else "",
+        "body": collection.get("body", "") if collection else "",
+    }
+
+    if request.method == "POST":
+        form_values = {
+            "title": request.form.get("title", "").strip(),
+            "preview_line": request.form.get("preview_line", "").strip(),
+            "body": request.form.get("body", "").strip(),
+        }
+        valid_entry_ids = {entry["id"] for entry in available_entries}
+        selected_entry_ids = {entry_id for entry_id in request.form.getlist("entry_ids") if entry_id in valid_entry_ids}
+
+        if not form_values["title"]:
+            flash("Collection title is required.", "error")
+        elif not form_values["body"]:
+            flash("Collection body is required.", "error")
+        else:
+            target = collection
+            if target is None:
+                target = {
+                    "id": str(uuid.uuid4()),
+                    "campaign_id": campaign["id"],
+                    "created_at": now_iso(),
+                }
+                data["world_collections"].append(target)
+
+            target.update(
+                {
+                    "title": form_values["title"],
+                    "preview_line": form_values["preview_line"],
+                    "body": form_values["body"],
+                    "entry_ids": sorted(selected_entry_ids),
+                    "updated_at": now_iso(),
+                }
+            )
+            save_data(data)
+            flash("Featured collection saved.", "success")
+            return redirect(url_for("world_collection", collection_id=target["id"]))
+
+    return render_template(
+        "world_collection_editor.html",
+        campaign=campaign,
+        collection=collection,
+        form_values=form_values,
+        available_entries=available_entries,
+        selected_entry_ids=selected_entry_ids,
+    )
+
+
+def handle_world_featured_lore_editor():
+    data = load_data()
+    campaign = get_active_dm_campaign(data, g.user["id"])
+    if campaign is None:
+        flash("Create or switch to a campaign before editing featured lore.", "error")
+        return redirect(url_for("campaigns_page"))
+
+    available_entries = decorate_world_entries(data, get_campaign_atlas_pages(data, campaign["id"]))
+    selected_entry_ids = [str(item) for item in campaign.get("featured_lore_entry_ids", [])]
+
+    if request.method == "POST":
+        valid_entry_ids = {entry["id"] for entry in available_entries}
+        selected_entry_ids = [entry_id for entry_id in request.form.getlist("entry_ids") if entry_id in valid_entry_ids]
+        campaign["featured_lore_entry_ids"] = selected_entry_ids
+        save_data(data)
+        flash("Featured lore updated.", "success")
+        return redirect(url_for("world_atlas"))
+
+    return render_template(
+        "world_featured_lore_editor.html",
+        campaign=campaign,
+        available_entries=available_entries,
+        selected_entry_ids=set(selected_entry_ids),
+    )
+
+
 def build_campaign_feed_items(
     data: dict[str, list[dict[str, Any]]],
     campaign_id: str,
@@ -858,7 +1372,7 @@ def get_world_category_definitions() -> list[dict[str, str]]:
             "label": "People",
             "eyebrow": "Dossiers",
             "heading": "Characters and Notable Figures",
-            "description": "Important individuals, public profiles, and character-centered world entries.",
+            "description": "Important individuals, public profiles, and character-centered world pages.",
         },
         {
             "key": "flora-fauna",
@@ -885,10 +1399,432 @@ def get_world_category_definitions() -> list[dict[str, str]]:
             "key": "misc",
             "label": "Misc",
             "eyebrow": "Archive",
-            "heading": "Unsorted and Miscellaneous Entries",
-            "description": "Useful world entries that do not yet fit a more specific shelf in the atlas.",
+            "heading": "Unsorted and Miscellaneous Pages",
+            "description": "Useful world pages that do not yet fit a more specific shelf in the atlas.",
         },
     ]
+
+
+def get_settings_sections() -> list[dict[str, str]]:
+    return [
+        {"key": "profile", "label": "Profile", "endpoint": "settings_profile"},
+        {"key": "account", "label": "Account", "endpoint": "settings_account"},
+        {"key": "preferences", "label": "Preferences", "endpoint": "settings_preferences"},
+    ]
+
+
+def build_settings_sidebar_nav() -> list[dict[str, Any]]:
+    nav_items: list[dict[str, Any]] = []
+    for section in get_settings_sections():
+        nav_items.append(
+            {
+                "key": section["key"],
+                "label": section["label"],
+                "href": url_for(section["endpoint"]),
+                "active": request.endpoint == section["endpoint"],
+            }
+        )
+    return nav_items
+
+
+def get_world_atlas_module_definitions() -> list[dict[str, str]]:
+    return [
+        {
+            "key": "featured_lore",
+            "label": "Featured Lore",
+            "title": "Featured Lore",
+            "description": "The rotating banner at the top of the World Atlas Portal.",
+            "type": "featured_lore",
+            "default_span": 3,
+        },
+        {
+            "key": "featured_collections",
+            "label": "Featured Collections",
+            "title": "Featured Collections",
+            "description": "Curated collections of World Atlas pages grouped around a theme or focus.",
+            "type": "featured_collections",
+            "default_span": 3,
+        },
+        {
+            "key": "recent_pages",
+            "label": "Recent Pages",
+            "title": "Recent Pages",
+            "description": "A feed of the newest world pages published to the portal.",
+            "type": "recent_pages",
+            "default_span": 2,
+        },
+        {
+            "key": "image_feature",
+            "label": "Image Feature",
+            "title": "Image Feature",
+            "description": "A visual spotlight block with an image, title, and supporting text.",
+            "type": "image_feature",
+            "default_span": 3,
+        },
+        {
+            "key": "rich_text_block",
+            "label": "Lore Block",
+            "title": "Lore Block",
+            "description": "A flexible markdown block for portal flavor, context, or current-state lore.",
+            "type": "rich_text_block",
+            "default_span": 2,
+        },
+        {
+            "key": "featured_page",
+            "label": "Featured Page",
+            "title": "Featured Page",
+            "description": "A curated spotlight for one important World Atlas page.",
+            "type": "featured_page",
+            "default_span": 1,
+        },
+        {
+            "key": "category_spotlight",
+            "label": "Category Spotlight",
+            "title": "Category Spotlight",
+            "description": "A focused look at one World Atlas category.",
+            "type": "category_spotlight",
+            "default_span": 1,
+        },
+        *[
+            {
+                "key": item["key"],
+                "label": item["label"],
+                "title": item["label"],
+                "description": item["description"],
+                "type": "category",
+                "default_span": 1,
+            }
+            for item in get_world_category_definitions()
+        ],
+    ]
+
+
+def get_default_world_atlas_layout() -> list[dict[str, Any]]:
+    default_keys = ["featured_lore", "featured_collections", *[item["key"] for item in get_world_category_definitions()]]
+    definition_map = {item["key"]: item for item in get_world_atlas_module_definitions()}
+    return [
+        {
+            "key": key,
+            "visible": True,
+            "span": int(definition_map.get(key, {}).get("default_span", 1)),
+        }
+        for key in default_keys
+        if key in definition_map
+    ]
+
+
+def get_world_atlas_module_setting_defaults(module_key: str) -> dict[str, Any]:
+    return dict(WORLD_ATLAS_PORTAL_MODULE_SETTING_DEFAULTS.get(module_key, {}))
+
+
+def get_world_atlas_module_settings(campaign: dict[str, Any] | None, module_key: str) -> dict[str, Any]:
+    settings = get_world_atlas_module_setting_defaults(module_key)
+    stored_settings = ((campaign or {}).get("world_atlas_module_settings") or {}).get(module_key, {})
+    for key, value in stored_settings.items():
+        settings[key] = value
+    return settings
+
+
+def normalize_world_atlas_layout(campaign: dict[str, Any] | None) -> list[dict[str, Any]]:
+    definitions = get_world_atlas_module_definitions()
+    definition_map = {item["key"]: item for item in definitions}
+    existing = list((campaign or {}).get("world_atlas_layout", []))
+    if not existing:
+        return get_default_world_atlas_layout()
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for item in existing:
+        key = str(item.get("key", "")).strip()
+        if not key or key not in definition_map or key in seen:
+            continue
+        seen.add(key)
+        default_span = int(definition_map[key].get("default_span", 1))
+        span = clamp_int(item.get("span", default_span), default_span, 1, 3)
+        normalized.append({"key": key, "visible": bool(item.get("visible", True)), "span": span})
+
+    return normalized
+
+
+def get_world_atlas_title(campaign: dict[str, Any] | None) -> str:
+    if not campaign:
+        return "World Atlas"
+    return (campaign.get("world_atlas_title") or campaign.get("name") or "World Atlas").strip()
+
+
+def get_world_atlas_intro(campaign: dict[str, Any] | None) -> str:
+    if not campaign:
+        return DEFAULT_WORLD_ATLAS_INTRO
+    return (campaign.get("world_atlas_intro") or DEFAULT_WORLD_ATLAS_INTRO).strip()
+
+
+def sort_world_pages_by_recent(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        pages,
+        key=lambda page: (
+            str(page.get("updated_at") or page.get("created_at") or ""),
+            str(page.get("title") or "").lower(),
+        ),
+        reverse=True,
+    )
+
+
+def build_world_atlas_module_settings_from_form(
+    form: Any,
+    campaign: dict[str, Any],
+    available_page_ids: set[str],
+    available_collection_ids: set[str],
+) -> dict[str, dict[str, Any]]:
+    settings_map = dict(campaign.get("world_atlas_module_settings") or {})
+    valid_categories = {"all", *[item["key"] for item in get_world_category_definitions()]}
+
+    for definition in get_world_atlas_module_definitions():
+        key = definition["key"]
+        settings = get_world_atlas_module_settings(campaign, key)
+
+        if key == "featured_collections":
+            settings.update(
+                {
+                    "configured": True,
+                    "collection_ids": [
+                        collection_id
+                        for collection_id in form.getlist(f"module_setting_{key}_collection_ids")
+                        if collection_id in available_collection_ids
+                    ]
+                }
+            )
+        elif key == "recent_pages":
+            category_key = form.get(f"module_setting_{key}_category_key", settings.get("category_key", "all")).strip()
+            settings.update(
+                {
+                    "title": form.get(f"module_setting_{key}_title", settings.get("title", definition["title"])).strip()
+                    or definition["title"],
+                    "preview_line": form.get(f"module_setting_{key}_preview_line", settings.get("preview_line", "")).strip(),
+                    "category_key": category_key if category_key in valid_categories else "all",
+                    "count": str(clamp_int(form.get(f"module_setting_{key}_count", settings.get("count", "6")), 6, 1, 12)),
+                    "display_style": form.get(
+                        f"module_setting_{key}_display_style",
+                        settings.get("display_style", "cards"),
+                    ).strip()
+                    if form.get(f"module_setting_{key}_display_style", settings.get("display_style", "cards")).strip() in {"cards", "list"}
+                    else "cards",
+                }
+            )
+        elif key == "image_feature":
+            settings.update(
+                {
+                    "title": form.get(f"module_setting_{key}_title", settings.get("title", definition["title"])).strip()
+                    or definition["title"],
+                    "image_url": form.get(f"module_setting_{key}_image_url", settings.get("image_url", "")).strip(),
+                    "image_alignment": form.get(
+                        f"module_setting_{key}_image_alignment",
+                        settings.get("image_alignment", "right"),
+                    ).strip()
+                    if form.get(f"module_setting_{key}_image_alignment", settings.get("image_alignment", "right")).strip() in {"left", "right"}
+                    else "right",
+                    "body": form.get(f"module_setting_{key}_body", settings.get("body", "")).strip(),
+                    "button_label": form.get(f"module_setting_{key}_button_label", settings.get("button_label", "")).strip(),
+                    "button_href": form.get(f"module_setting_{key}_button_href", settings.get("button_href", "")).strip(),
+                }
+            )
+        elif key == "rich_text_block":
+            style_value = form.get(f"module_setting_{key}_style", settings.get("style", "standard")).strip()
+            settings.update(
+                {
+                    "title": form.get(f"module_setting_{key}_title", settings.get("title", definition["title"])).strip()
+                    or definition["title"],
+                    "body": form.get(f"module_setting_{key}_body", settings.get("body", "")).strip(),
+                    "style": style_value if style_value in {"standard", "callout"} else "standard",
+                }
+            )
+        elif key == "featured_page":
+            page_id = form.get(f"module_setting_{key}_page_id", settings.get("page_id", "")).strip()
+            settings.update(
+                {
+                    "title": form.get(f"module_setting_{key}_title", settings.get("title", definition["title"])).strip()
+                    or definition["title"],
+                    "page_id": page_id if page_id in available_page_ids else "",
+                    "show_category": form.get(f"module_setting_{key}_show_category") == "on",
+                    "show_preview_line": form.get(f"module_setting_{key}_show_preview_line") == "on",
+                    "show_image": form.get(f"module_setting_{key}_show_image") == "on",
+                }
+            )
+        elif key == "category_spotlight":
+            category_key = form.get(f"module_setting_{key}_category_key", settings.get("category_key", "gods")).strip()
+            sort_mode = form.get(f"module_setting_{key}_sort_mode", settings.get("sort_mode", "alphabetical")).strip()
+            display_style = form.get(f"module_setting_{key}_display_style", settings.get("display_style", "list")).strip()
+            settings.update(
+                {
+                    "title": form.get(f"module_setting_{key}_title", settings.get("title", definition["title"])).strip()
+                    or definition["title"],
+                    "category_key": category_key if category_key in valid_categories - {"all"} else "gods",
+                    "count": str(clamp_int(form.get(f"module_setting_{key}_count", settings.get("count", "5")), 5, 1, 12)),
+                    "sort_mode": sort_mode if sort_mode in {"alphabetical", "recent"} else "alphabetical",
+                    "display_style": display_style if display_style in {"cards", "list"} else "list",
+                }
+            )
+
+        settings_map[key] = settings
+
+    return settings_map
+
+
+def build_world_atlas_modules(
+    data: dict[str, list[dict[str, Any]]],
+    campaign: dict[str, Any] | None,
+    user: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if campaign is None:
+        return []
+
+    pages = get_visible_campaign_atlas_pages(data, campaign["id"], user) if user else []
+    decorated_pages = decorate_world_entries(data, pages)
+    categories = categorize_world_pages(decorated_pages)
+    collections = decorate_world_collections(data, get_campaign_world_collections(data, campaign["id"]), user) if user else []
+    featured_lore_pages = get_campaign_featured_lore_entries(data, campaign, user)
+    definition_map = {item["key"]: item for item in get_world_atlas_module_definitions()}
+    can_edit = bool(user and user.get("role") == "dm" and campaign.get("dm_user_id") == user.get("id"))
+    modules: list[dict[str, Any]] = []
+    category_definitions = {item["key"]: item for item in get_world_category_definitions()}
+
+    for item in normalize_world_atlas_layout(campaign):
+        if not item.get("visible", True):
+            continue
+        key = item["key"]
+        definition = definition_map.get(key)
+        if definition is None:
+            continue
+        settings = get_world_atlas_module_settings(campaign, key)
+        layout_class = f"world-atlas-module-span-{item.get('span', definition.get('default_span', 1))}"
+
+        if key == "featured_lore":
+            modules.append(
+                {
+                    **definition,
+                    "pages": featured_lore_pages,
+                    "manage_href": url_for("world_featured_lore_edit") if can_edit else "",
+                    "layout_class": layout_class,
+                }
+            )
+            continue
+
+        if key == "featured_collections":
+            selected_collection_ids = [str(item) for item in settings.get("collection_ids", [])]
+            if settings.get("configured"):
+                collection_by_id = {collection["id"]: collection for collection in collections}
+                filtered_collections = [
+                    collection_by_id[collection_id]
+                    for collection_id in selected_collection_ids
+                    if collection_id in collection_by_id
+                ]
+            else:
+                filtered_collections = list(collections)
+            modules.append(
+                {
+                    **definition,
+                    "collections": filtered_collections,
+                    "manage_href": url_for("world_atlas_edit") if can_edit else "",
+                    "create_href": url_for("world_collection_new") if can_edit else "",
+                    "layout_class": layout_class,
+                }
+            )
+            continue
+
+        if key == "recent_pages":
+            recent_category_key = settings.get("category_key", "all")
+            source_pages = decorated_pages if recent_category_key == "all" else categories.get(recent_category_key, [])
+            recent_pages = sort_world_pages_by_recent(source_pages)[: clamp_int(settings.get("count", "6"), 6, 1, 12)]
+            modules.append(
+                {
+                    **definition,
+                    "title": settings.get("title") or definition["title"],
+                    "preview_line": settings.get("preview_line", ""),
+                    "pages": recent_pages,
+                    "display_style": settings.get("display_style", "cards"),
+                    "category_key": recent_category_key,
+                    "layout_class": layout_class,
+                }
+            )
+            continue
+
+        if key == "image_feature":
+            button_href = str(settings.get("button_href", "")).strip()
+            modules.append(
+                {
+                    **definition,
+                    "title": settings.get("title") or definition["title"],
+                    "image_url": str(settings.get("image_url", "")).strip(),
+                    "body": render_wiki_markup(str(settings.get("body", "")).strip(), data, campaign["id"]),
+                    "body_raw": str(settings.get("body", "")).strip(),
+                    "image_alignment": settings.get("image_alignment", "right"),
+                    "button_label": str(settings.get("button_label", "")).strip(),
+                    "button_href": button_href,
+                    "layout_class": layout_class,
+                }
+            )
+            continue
+
+        if key == "rich_text_block":
+            modules.append(
+                {
+                    **definition,
+                    "title": settings.get("title") or definition["title"],
+                    "body": render_wiki_markup(str(settings.get("body", "")).strip(), data, campaign["id"]),
+                    "body_raw": str(settings.get("body", "")).strip(),
+                    "style": settings.get("style", "standard"),
+                    "layout_class": layout_class,
+                }
+            )
+            continue
+
+        if key == "featured_page":
+            selected_page = next((page for page in decorated_pages if page["id"] == settings.get("page_id")), None)
+            modules.append(
+                {
+                    **definition,
+                    "title": settings.get("title") or definition["title"],
+                    "page": selected_page,
+                    "show_category": bool(settings.get("show_category", True)),
+                    "show_preview_line": bool(settings.get("show_preview_line", True)),
+                    "show_image": bool(settings.get("show_image", True)),
+                    "layout_class": layout_class,
+                }
+            )
+            continue
+
+        if key == "category_spotlight":
+            spotlight_category_key = settings.get("category_key", "gods")
+            spotlight_pages = list(categories.get(spotlight_category_key, []))
+            if settings.get("sort_mode", "alphabetical") == "recent":
+                spotlight_pages = sort_world_pages_by_recent(spotlight_pages)
+            else:
+                spotlight_pages = sorted(spotlight_pages, key=lambda page: str(page.get("title", "")).lower())
+            spotlight_pages = spotlight_pages[: clamp_int(settings.get("count", "5"), 5, 1, 12)]
+            spotlight_category = category_definitions.get(spotlight_category_key, category_definitions.get("misc"))
+            modules.append(
+                {
+                    **definition,
+                    "title": settings.get("title") or definition["title"],
+                    "category": spotlight_category,
+                    "pages": spotlight_pages,
+                    "display_style": settings.get("display_style", "list"),
+                    "layout_class": layout_class,
+                }
+            )
+            continue
+
+        pages_for_category = categories.get(key, [])
+        modules.append(
+            {
+                **definition,
+                "pages": pages_for_category,
+                "href": url_for("world_category", category_key=key),
+                "empty_message": f"No {definition['label'].lower()} pages are available yet.",
+                "layout_class": layout_class,
+            }
+        )
+
+    return modules
 
 
 def get_world_category_options() -> list[dict[str, str]]:
@@ -901,7 +1837,7 @@ def get_world_editor_preview_specs() -> dict[str, Any]:
             "title": "Identity",
             "description": "The baseline information every World Atlas entry should carry.",
             "fields": [
-                {"label": "Entry Title", "type": "text", "value": "Aegis"},
+                {"label": "Page Title", "type": "text", "value": "Aegis"},
                 {"label": "Subtitle / Tagline", "type": "text", "value": "The Shieldbearer"},
                 {"label": "World Atlas Section", "type": "select", "value": "Gods & Deities"},
                 {"label": "Summary", "type": "textarea", "value": "A short overview that explains why this entry matters at a glance."},
@@ -913,7 +1849,7 @@ def get_world_editor_preview_specs() -> dict[str, Any]:
             "fields": [
                 {"label": "Cover Image URL", "type": "text", "value": "https://example.com/world-entry-cover.jpg"},
                 {"label": "Gallery / Attachments", "type": "text", "value": "Drag in maps, portraits, handouts, or linked media."},
-                {"label": "Related Entries", "type": "text", "value": "[[The Divine Pantheon of Aetheria]], [[Celestia]]"},
+                        {"label": "Related Pages", "type": "text", "value": "[[The Divine Pantheon of Aetheria]], [[Celestia]]"},
                 {"label": "Tags", "type": "text", "value": "pantheon, shield, divine order"},
             ],
         },
@@ -924,7 +1860,7 @@ def get_world_editor_preview_specs() -> dict[str, Any]:
                 {"label": "Visibility", "type": "select", "value": "Visible To Campaign"},
                 {"label": "Source", "type": "select", "value": "DM Atlas Editor"},
                 {"label": "Canon Status", "type": "select", "value": "Official"},
-                {"label": "Entry Body", "type": "textarea", "value": "# Overview\nUse the full editor for the rich article body, crosslinks, media, and structured sections."},
+                {"label": "Page Body", "type": "textarea", "value": "# Overview\nUse the full editor for the rich article body, crosslinks, media, and structured sections."},
             ],
         },
     ]
@@ -1188,7 +2124,7 @@ def get_world_editor_preview_specs() -> dict[str, Any]:
                 {
                     "title": "Notes & Crosslinks",
                     "fields": [
-                        {"label": "Related Entries", "type": "text", "value": "[[The Maelstrom]], [[Council Of Archmages]]"},
+                        {"label": "Related Pages", "type": "text", "value": "[[The Maelstrom]], [[Council Of Archmages]]"},
                         {"label": "Discovery Context", "type": "textarea", "value": "Recovered from a drowned relay under the shattered seventh skyway."},
                         {"label": "GM Notes", "type": "textarea", "value": "Useful for foreshadowing long before the party learns the full truth."},
                     ],
@@ -1356,6 +2292,55 @@ def build_world_entry_subheading(page: dict[str, Any]) -> str:
     return ""
 
 
+def build_world_entry_preview_text(page: dict[str, Any], limit: int = 220) -> str:
+    explicit = str(page.get("summary", "")).strip()
+    if explicit:
+        return explicit[:limit] + ("..." if len(explicit) > limit else "")
+
+    content = str(page.get("content", "")).strip()
+    if not content:
+        return ""
+
+    preview_lines: list[str] = []
+    for raw_line in content.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        if MEDIA_BLOCK_PATTERN.match(stripped):
+            continue
+        if stripped in {"---", "***"}:
+            continue
+
+        stripped = re.sub(r"^#{1,3}\s*", "", stripped)
+        stripped = re.sub(r"^>\s*", "", stripped)
+        stripped = re.sub(r"^[-*]\s+", "", stripped)
+        stripped = ORDERED_LIST_PATTERN.sub("", stripped, count=1)
+        stripped = WIKI_LINK_PATTERN.sub(lambda match: match.group(1).strip(), stripped)
+        stripped = MARKDOWN_LINK_PATTERN.sub(lambda match: match.group(1).strip(), stripped)
+        stripped = re.sub(r"\*\*([^*]+)\*\*", r"\1", stripped)
+        stripped = re.sub(r"_([^_]+)_", r"\1", stripped)
+        stripped = re.sub(r"\s+", " ", stripped).strip()
+
+        if stripped:
+            preview_lines.append(stripped)
+
+        joined = " ".join(preview_lines).strip()
+        if len(joined) >= limit:
+            break
+
+    preview = " ".join(preview_lines).strip()
+    if not preview:
+        return ""
+    return preview[:limit] + ("..." if len(preview) > limit else "")
+
+
+def build_collection_preview_text(collection: dict[str, Any], limit: int = 220) -> str:
+    explicit = str(collection.get("preview_line", "")).strip()
+    if explicit:
+        return explicit[:limit] + ("..." if len(explicit) > limit else "")
+    return build_world_entry_preview_text({"summary": "", "content": collection.get("body", "")}, limit=limit)
+
+
 def decorate_world_entries(
     data: dict[str, list[dict[str, Any]]],
     pages: list[dict[str, Any]],
@@ -1374,7 +2359,39 @@ def decorate_world_entries(
                 **page,
                 "image_url": image_url,
                 "subheading": build_world_entry_subheading(page),
+                "preview_text": build_world_entry_preview_text(page),
                 "initial": (page.get("title", "?") or "?")[0].upper(),
+            }
+        )
+    return decorated
+
+
+def decorate_world_collections(
+    data: dict[str, list[dict[str, Any]]],
+    collections: list[dict[str, Any]],
+    user: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    decorated: list[dict[str, Any]] = []
+    for collection in sorted(collections, key=lambda item: item.get("title", "").lower()):
+        visible_pages: list[dict[str, Any]] = []
+        for page_id in collection.get("entry_ids", []):
+            page = get_wiki_page_by_id(data, page_id)
+            if page is None:
+                continue
+            if user is not None and not can_user_view_world_page(data, user, page):
+                continue
+            visible_pages.append(page)
+        decorated_pages = decorate_world_entries(data, visible_pages)
+        decorated.append(
+            {
+                **collection,
+                "preview_text": build_collection_preview_text(collection),
+                "page_count": len(decorated_pages),
+                "pages": decorated_pages,
+                "cover_page": decorated_pages[0] if decorated_pages else None,
+                "entry_count": len(decorated_pages),
+                "entries": decorated_pages,
+                "cover_entry": decorated_pages[0] if decorated_pages else None,
             }
         )
     return decorated
@@ -1388,7 +2405,7 @@ def build_world_sidebar_nav(
     if not campaign or not user:
         return []
 
-    pages = get_visible_campaign_wiki_pages(data, campaign["id"], user)
+    pages = get_visible_campaign_atlas_pages(data, campaign["id"], user)
     categories = categorize_world_pages(pages)
     nav_items: list[dict[str, Any]] = []
     can_create = user.get("role") == "dm" and campaign.get("dm_user_id") == user.get("id")
@@ -1420,8 +2437,12 @@ def inject_globals() -> dict[str, Any]:
     active_sidebar_campaign: dict[str, Any] | None = None
     active_sidebar_membership: dict[str, Any] | None = None
     drawer_character_notes: list[dict[str, Any]] = []
+    dm_action_wiki_pages: list[dict[str, Any]] = []
+    dm_action_player_targets: list[dict[str, Any]] = []
+    dm_action_world_category_options: list[dict[str, Any]] = []
     sidebar_body_mode = "default"
     world_sidebar_nav: list[dict[str, Any]] = []
+    settings_sidebar_nav: list[dict[str, Any]] = []
 
     if g.user:
         data = load_data()
@@ -1429,6 +2450,12 @@ def inject_globals() -> dict[str, Any]:
             campaigns = get_dm_campaigns(data, g.user["id"])
             account_campaigns = [{"id": campaign["id"], "name": campaign["name"]} for campaign in campaigns]
             active_sidebar_campaign = get_active_dm_campaign(data, g.user["id"])
+            if active_sidebar_campaign:
+                dm_action_wiki_pages = decorate_world_entries(
+                    data, get_campaign_atlas_pages(data, active_sidebar_campaign["id"])
+                )
+                dm_action_player_targets = get_campaign_player_targets(data, active_sidebar_campaign["id"])
+                dm_action_world_category_options = get_world_category_options()
         else:
             memberships = get_player_memberships(data, g.user["id"])
             active_sidebar_membership = get_active_player_membership(data, g.user["id"])
@@ -1448,9 +2475,25 @@ def inject_globals() -> dict[str, Any]:
                     reversed(get_character_notes(data, active_sidebar_membership["campaign_id"], g.user["id"]))
                 )
 
-        if request.endpoint in {"world_landing", "world_atlas", "world_category", "world_entry", "character_world_entry", "world_editor_preview", "world_editor"}:
+        if request.endpoint in {
+            "world_landing",
+            "world_atlas",
+            "world_category",
+            "world_entry",
+            "character_world_entry",
+            "world_editor_preview",
+            "world_editor",
+            "world_featured_lore_edit",
+            "world_collection_new",
+            "world_collection_edit",
+            "world_collection",
+            "world_atlas_edit",
+        }:
             sidebar_body_mode = "world"
             world_sidebar_nav = build_world_sidebar_nav(data, active_sidebar_campaign, g.user)
+        elif request.endpoint in {"settings", "settings_profile", "settings_account", "settings_preferences"}:
+            sidebar_body_mode = "settings"
+            settings_sidebar_nav = build_settings_sidebar_nav()
 
     return {
         "current_user": g.user,
@@ -1458,8 +2501,12 @@ def inject_globals() -> dict[str, Any]:
         "active_sidebar_campaign": active_sidebar_campaign,
         "active_sidebar_membership": active_sidebar_membership,
         "drawer_character_notes": drawer_character_notes,
+        "dm_action_wiki_pages": dm_action_wiki_pages,
+        "dm_action_player_targets": dm_action_player_targets,
+        "dm_action_world_category_options": dm_action_world_category_options,
         "sidebar_body_mode": sidebar_body_mode,
         "world_sidebar_nav": world_sidebar_nav,
+        "settings_sidebar_nav": settings_sidebar_nav,
     }
 
 
@@ -1501,6 +2548,8 @@ def auth():
                 flash("Please complete every registration field.", "error")
             elif get_user_by_email(data, email):
                 flash("An account with that email already exists. Try logging in instead.", "error")
+            elif get_user_by_display_name(data, display_name):
+                flash("That display name is already in use. Choose another one.", "error")
             else:
                 user = {
                     "id": str(uuid.uuid4()),
@@ -1508,6 +2557,7 @@ def auth():
                     "display_name": display_name,
                     "password_hash": generate_password_hash(password),
                     "role": role,
+                    **USER_SETTINGS_DEFAULTS,
                 }
                 data["users"].append(user)
                 save_data(data)
@@ -1544,12 +2594,126 @@ def logout():
     return redirect(url_for("auth"))
 
 
+def render_settings_page(section_key: str, **kwargs: Any):
+    section_map = {item["key"]: item for item in get_settings_sections()}
+    section = section_map[section_key]
+    return render_template(
+        "settings.html",
+        settings_section=section_key,
+        settings_title=section["label"],
+        **kwargs,
+    )
+
+
 @app.route("/settings")
 def settings():
     redirect_response = require_login()
     if redirect_response:
         return redirect_response
-    return render_template("settings.html")
+    return redirect(url_for("settings_profile"))
+
+
+@app.route("/settings/profile", methods=["GET", "POST"])
+def settings_profile():
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    user = get_user_by_id(data, g.user["id"])
+    if user is None:
+        return redirect(url_for("auth"))
+
+    if request.method == "POST":
+        display_name = request.form.get("display_name", "").strip()
+        pronouns = request.form.get("pronouns", "").strip()
+        profile_image_url = request.form.get("profile_image_url", "").strip()
+
+        if not display_name:
+            flash("Display name is required.", "error")
+        else:
+            existing_user = get_user_by_display_name(data, display_name)
+            if existing_user and existing_user["id"] != user["id"]:
+                flash("That display name is already in use.", "error")
+            else:
+                user["display_name"] = display_name
+                user["pronouns"] = pronouns
+                user["profile_image_url"] = profile_image_url
+                save_data(data)
+                g.user = user
+                flash("Profile settings saved.", "success")
+                return redirect(url_for("settings_profile"))
+
+    return render_settings_page("profile", user_settings=user)
+
+
+@app.route("/settings/account", methods=["GET", "POST"])
+def settings_account():
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    user = get_user_by_id(data, g.user["id"])
+    if user is None:
+        return redirect(url_for("auth"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not email:
+            flash("Email is required.", "error")
+        else:
+            existing_user = get_user_by_email(data, email)
+            if existing_user and existing_user["id"] != user["id"]:
+                flash("Another account is already using that email.", "error")
+            elif new_password:
+                if not current_password or not check_password_hash(user["password_hash"], current_password):
+                    flash("Current password is required to set a new password.", "error")
+                elif new_password != confirm_password:
+                    flash("New password confirmation does not match.", "error")
+                else:
+                    user["email"] = email
+                    user["password_hash"] = generate_password_hash(new_password)
+                    save_data(data)
+                    g.user = user
+                    flash("Account settings updated.", "success")
+                    return redirect(url_for("settings_account"))
+            else:
+                user["email"] = email
+                save_data(data)
+                g.user = user
+                flash("Account settings updated.", "success")
+                return redirect(url_for("settings_account"))
+
+    return render_settings_page("account", user_settings=user)
+
+
+@app.route("/settings/preferences", methods=["GET", "POST"])
+def settings_preferences():
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    user = get_user_by_id(data, g.user["id"])
+    if user is None:
+        return redirect(url_for("auth"))
+
+    if request.method == "POST":
+        user["default_note_visibility"] = request.form.get("default_note_visibility", "private").strip() or "private"
+        user["ui_density"] = request.form.get("ui_density", "comfortable").strip() or "comfortable"
+        user["spoken_language"] = request.form.get("spoken_language", "English").strip() or "English"
+        user["timezone"] = request.form.get("timezone", "America/New_York").strip() or "America/New_York"
+        save_data(data)
+        g.user = user
+        flash("Preferences updated.", "success")
+        return redirect(url_for("settings_preferences"))
+
+    return render_settings_page("preferences", user_settings=user)
 
 
 @app.route("/formatting-help")
@@ -1659,7 +2823,7 @@ def world_landing():
 
     data = load_data()
     campaign = get_active_campaign_for_user(data, g.user)
-    pages = get_visible_campaign_wiki_pages(data, campaign["id"], g.user) if campaign else []
+    pages = get_visible_campaign_atlas_pages(data, campaign["id"], g.user) if campaign else []
     return render_template(
         "world_landing.html",
         pages=decorate_world_entries(data, pages),
@@ -1672,6 +2836,101 @@ def codex_landing():
     return redirect(url_for("world_landing"))
 
 
+@app.route("/world/atlas/edit", methods=["GET", "POST"])
+def world_atlas_edit():
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+    if g.user["role"] != "dm":
+        flash("Only the DM can edit the World Atlas Portal.", "error")
+        return redirect(url_for("world_atlas"))
+
+    data = load_data()
+    campaign = get_active_dm_campaign(data, g.user["id"])
+    if campaign is None:
+        flash("Create or switch to a campaign before editing the World Atlas Portal.", "error")
+        return redirect(url_for("campaigns_page"))
+
+    module_definitions = get_world_atlas_module_definitions()
+    module_definition_map = {item["key"]: item for item in module_definitions}
+    layout = normalize_world_atlas_layout(campaign)
+    available_pages = sorted(
+        decorate_world_entries(data, get_campaign_atlas_pages(data, campaign["id"])),
+        key=lambda page: page["title"].lower(),
+    )
+    available_page_ids = {page["id"] for page in available_pages}
+    available_collections = decorate_world_collections(data, get_campaign_world_collections(data, campaign["id"]), g.user)
+    available_collection_ids = {collection["id"] for collection in available_collections}
+    module_rows: list[dict[str, Any]] = []
+    available_module_rows: list[dict[str, Any]] = []
+
+    if request.method == "POST":
+        campaign["world_atlas_title"] = request.form.get("world_atlas_title", "").strip()
+        campaign["world_atlas_intro"] = request.form.get("world_atlas_intro", "").strip()
+        campaign["world_atlas_module_settings"] = build_world_atlas_module_settings_from_form(
+            request.form,
+            campaign,
+            available_page_ids,
+            available_collection_ids,
+        )
+        reordered_layout: list[dict[str, Any]] = []
+        active_module_keys = [key for key in request.form.getlist("active_module_keys") if key in module_definition_map]
+        seen_active: set[str] = set()
+        for index, key in enumerate(active_module_keys, start=1):
+            if key in seen_active:
+                continue
+            seen_active.add(key)
+            default_span = int(module_definition_map[key].get("default_span", 1))
+            span_number = clamp_int(request.form.get(f"module_span_{key}", str(default_span)).strip(), default_span, 1, 3)
+            reordered_layout.append(
+                {
+                    "key": key,
+                    "visible": request.form.get(f"module_visible_{key}") == "on",
+                    "span": span_number,
+                }
+            )
+        campaign["world_atlas_layout"] = reordered_layout
+        save_data(data)
+        flash("World Atlas Portal updated.", "success")
+        return redirect(url_for("world_atlas_edit"))
+
+    active_keys = {item["key"] for item in layout}
+    for item in layout:
+        key = item["key"]
+        module = module_definition_map[key]
+        module_rows.append(
+            {
+                **module,
+                "visible": bool(item.get("visible", True)),
+                "span": int(item.get("span", module.get("default_span", 1))),
+                "settings": get_world_atlas_module_settings(campaign, key),
+            }
+        )
+
+    for module in module_definitions:
+        if module["key"] in active_keys:
+            continue
+        available_module_rows.append(
+            {
+                **module,
+                "default_span": int(module.get("default_span", 1)),
+                "settings": get_world_atlas_module_settings(campaign, module["key"]),
+            }
+        )
+
+    return render_template(
+        "world_atlas_editor.html",
+        campaign=campaign,
+        module_rows=module_rows,
+        available_module_rows=available_module_rows,
+        atlas_title=campaign.get("world_atlas_title", ""),
+        atlas_intro=campaign.get("world_atlas_intro", ""),
+        category_options=[{"key": "all", "label": "All Pages"}, *get_world_category_definitions()],
+        available_pages=available_pages,
+        available_collections=available_collections,
+    )
+
+
 @app.route("/world/atlas")
 def world_atlas():
     redirect_response = require_login()
@@ -1680,46 +2939,78 @@ def world_atlas():
 
     data = load_data()
     campaign = get_active_campaign_for_user(data, g.user)
-    pages = get_visible_campaign_wiki_pages(data, campaign["id"], g.user) if campaign else []
-    page_lookup = {page["title"]: page for page in pages}
-    featured_page = page_lookup.get("Aetheria, Realm of the Maelstrom")
-    categories = categorize_world_pages(pages)
-
-    collection_titles = [
-        "The Divine Pantheon of Aetheria",
-        "Continents of Aetheria",
-        "Factions of Aetheria",
-        "Races of Aetheria",
-    ]
-    collections = [page_lookup[title] for title in collection_titles if title in page_lookup]
-    collection_set = {page["title"] for page in collections}
-    recent_entries = sorted(
-        [
-            page
-            for page in pages
-            if page["title"] not in collection_set
-            and page is not featured_page
-            and page.get("source") == "kanka_import"
-        ],
-        key=lambda page: page["title"].lower(),
-    )[:12]
-
     return render_template(
         "world_atlas.html",
         campaign=campaign,
-        featured_page=featured_page,
-        collections=collections,
-        pantheon_entries=categories["gods"],
-        continent_entries=categories["places"],
-        faction_entries=categories["factions"],
-        race_entries=categories["culture"],
-        character_entries=categories["people"],
-        flora_fauna_entries=categories["flora-fauna"],
-        history_entries=categories["history"],
-        culture_entries=categories["culture"],
-        misc_entries=categories["misc"],
-        recent_entries=recent_entries,
+        atlas_title=get_world_atlas_title(campaign),
+        atlas_intro=get_world_atlas_intro(campaign),
+        atlas_modules=build_world_atlas_modules(data, campaign, g.user),
     )
+
+
+@app.route("/world/collection/<collection_id>")
+def world_collection(collection_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    collection = get_world_collection_by_id(data, collection_id)
+    if collection is None or not user_can_access_campaign(data, g.user, collection["campaign_id"]):
+        flash("That featured collection is not available to your account.", "error")
+        return redirect(url_for("world_atlas"))
+
+    campaign = get_campaign_by_id(data, collection["campaign_id"])
+    visible_entries = []
+    for entry_id in collection.get("entry_ids", []):
+        page = get_wiki_page_by_id(data, entry_id)
+        if page is None or not is_world_atlas_page(page) or not can_user_view_world_page(data, g.user, page):
+            continue
+        visible_entries.append(page)
+
+    return render_template(
+        "world_collection.html",
+        campaign=campaign,
+        collection={
+            **collection,
+            "preview_text": build_collection_preview_text(collection),
+            "entries": decorate_world_entries(data, visible_entries),
+        },
+        rendered_body=render_wiki_markup(collection.get("body", ""), data, collection["campaign_id"]),
+    )
+
+
+@app.route("/world/collection/new", methods=["GET", "POST"])
+def world_collection_new():
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+    if g.user["role"] != "dm":
+        flash("Only the DM can create featured collections.", "error")
+        return redirect(url_for("world_atlas"))
+    return handle_world_collection_editor(None)
+
+
+@app.route("/world/featured-lore/edit", methods=["GET", "POST"])
+def world_featured_lore_edit():
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+    if g.user["role"] != "dm":
+        flash("Only the DM can edit featured lore.", "error")
+        return redirect(url_for("world_atlas"))
+    return handle_world_featured_lore_editor()
+
+
+@app.route("/world/collection/<collection_id>/edit", methods=["GET", "POST"])
+def world_collection_edit(collection_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+    if g.user["role"] != "dm":
+        flash("Only the DM can edit featured collections.", "error")
+        return redirect(url_for("world_atlas"))
+    return handle_world_collection_editor(collection_id)
 
 
 @app.route("/world/category/<category_key>")
@@ -1735,7 +3026,7 @@ def world_category(category_key: str):
 
     data = load_data()
     campaign = get_active_campaign_for_user(data, g.user)
-    pages = get_visible_campaign_wiki_pages(data, campaign["id"], g.user) if campaign else []
+    pages = get_visible_campaign_atlas_pages(data, campaign["id"], g.user) if campaign else []
     categories = categorize_world_pages(pages)
     category = definitions[category_key]
     entries = decorate_world_entries(data, categories.get(category_key, []))
@@ -1780,13 +3071,13 @@ def world_editor(category_key: str):
     if redirect_response:
         return redirect_response
     if g.user["role"] != "dm":
-        flash("Only the DM can author World Atlas entries.", "error")
+        flash("Only the DM can author World Atlas pages.", "error")
         return redirect(url_for("world_atlas"))
 
     data = load_data()
     campaign = get_active_dm_campaign(data, g.user["id"])
     if campaign is None:
-        flash("Create or switch to a campaign before authoring atlas entries.", "error")
+        flash("Create or switch to a campaign before authoring atlas pages.", "error")
         return redirect(url_for("campaigns_page"))
 
     page_id = request.args.get("page_id", "").strip() or request.form.get("page_id", "").strip()
@@ -1859,9 +3150,9 @@ def world_editor(category_key: str):
         status = "published" if action == "publish" else "draft"
 
         if not form_values["title"]:
-            flash("Entry title is required.", "error")
+            flash("Page title is required.", "error")
         elif not form_values["body"]:
-            flash("Entry body is required.", "error")
+            flash("Page body is required.", "error")
         else:
             target_page = page
             if target_page is None:
@@ -1893,7 +3184,7 @@ def world_editor(category_key: str):
                 target_page["created_at"] = now_iso()
 
             save_data(data)
-            flash("World Atlas entry published." if status == "published" else "World Atlas draft saved.", "success")
+            flash("World Atlas page published." if status == "published" else "World Atlas draft saved.", "success")
             return redirect(url_for("world_entry", page_id=target_page["id"]))
 
     return render_template(
@@ -1959,6 +3250,12 @@ def dm_dashboard():
                     "premise": premise,
                     "invite_code": generate_invite_code(),
                     "dm_user_id": g.user["id"],
+                    "world_editor_presets": {},
+                    "featured_lore_entry_ids": [],
+                    "world_atlas_title": "",
+                    "world_atlas_intro": "",
+                    "world_atlas_layout": get_default_world_atlas_layout(),
+                    "world_atlas_module_settings": {},
                 }
                 data["campaigns"].append(new_campaign)
                 save_data(data)
@@ -2079,7 +3376,7 @@ def dm_dashboard():
                             }
                         )
                     save_data(data)
-                    flash(f"{kind} {'updated' if existing_broadcast is not None else 'posted'} for the campaign.", "success")
+                    flash(f"{kind} {'updated' if existing_broadcast is not None else 'posted'} in DM Actions.", "success")
                     return redirect(url_for("dm_dashboard"))
             elif form_type == "note":
                 title = request.form.get("title", "").strip()
@@ -2274,10 +3571,10 @@ def player_home():
 
     if not has_completed_character_sheet(membership):
         next_step = {
-            "title": "Complete your character sheet",
+            "title": "Complete your character",
             "detail": "Finish your stats and character details before the next session.",
             "href": url_for("player_character_sheet", campaign_id=membership["campaign_id"]),
-            "label": "Open Character Sheet",
+            "label": "Edit Character",
         }
     elif open_quests:
         next_step = {
@@ -2289,7 +3586,7 @@ def player_home():
     elif visible_nonquest_broadcasts:
         next_step = {
             "title": "Review the latest DM updates",
-            "detail": f"{len(visible_nonquest_broadcasts)} recent broadcast{'s' if len(visible_nonquest_broadcasts) != 1 else ''} are available to read.",
+                "detail": f"{len(visible_nonquest_broadcasts)} recent DM action{'s' if len(visible_nonquest_broadcasts) != 1 else ''} are available to read.",
             "href": url_for("player_home"),
             "label": "Open Campaign Feed",
         }
@@ -2330,7 +3627,77 @@ def player_home():
     )
 
 
-@app.route("/player/character-sheet", methods=["GET", "POST"])
+def save_character_editor_submission(data: dict[str, list[dict[str, Any]]], membership: dict[str, Any]) -> None:
+    fields = (
+        "portrait_url",
+        "class_name",
+        "subclass",
+        "level",
+        "species",
+        "background",
+        "alignment",
+        "armor_class",
+        "speed",
+        "max_hit_points",
+        "current_hit_points",
+        "temp_hit_points",
+        "initiative_bonus",
+        "proficiency_bonus",
+        "passive_perception",
+        "passive_investigation",
+        "passive_insight",
+        "strength",
+        "dexterity",
+        "constitution",
+        "intelligence",
+        "wisdom",
+        "charisma",
+        "character_notes",
+        "notable_proficiencies",
+        "saving_throw_proficiencies",
+        "armor_training",
+        "weapon_training",
+        "tool_training",
+        "languages",
+        "features_traits",
+    )
+    for field in fields:
+        membership[field] = request.form.get(field, "").strip()
+
+    membership["death_save_successes"] = str(parse_counter(request.form.get("death_save_successes", "0")))
+    membership["death_save_failures"] = str(parse_counter(request.form.get("death_save_failures", "0")))
+    membership["inventory_items"] = normalize_inventory_items(membership.get("inventory_items", []))
+
+    page = get_wiki_page_by_id(data, membership.get("wiki_page_id", ""))
+    if page is None:
+        page = {
+            "id": str(uuid.uuid4()),
+            "campaign_id": membership["campaign_id"],
+            "title": membership["character_name"],
+            "content": build_character_wiki_content(membership),
+            "source": "character_profile",
+            "membership_id": membership["id"],
+        }
+        membership["wiki_page_id"] = page["id"]
+        data["wiki_pages"].append(page)
+    else:
+        page["title"] = membership["character_name"]
+        page["content"] = build_character_wiki_content(membership)
+
+
+def render_character_editor(campaign: dict[str, Any] | None, membership: dict[str, Any]):
+    return render_template(
+        "character_sheet.html",
+        campaign=campaign,
+        membership=membership,
+        ability_cells=build_ability_cells(membership),
+        notable_proficiencies=parse_notable_proficiencies(membership.get("notable_proficiencies")),
+        death_save_successes=parse_counter(membership.get("death_save_successes", "0")),
+        death_save_failures=parse_counter(membership.get("death_save_failures", "0")),
+    )
+
+
+@app.route("/player/character-sheet", methods=["GET"])
 def player_character_sheet():
     redirect_response = require_login()
     if redirect_response:
@@ -2350,74 +3717,41 @@ def player_character_sheet():
         flash("Join a campaign before opening a character sheet.", "error")
         return redirect(url_for("campaigns_page"))
 
-    campaign = get_campaign_by_id(data, membership["campaign_id"])
     if not has_completed_onboarding(data, membership["campaign_id"], g.user["id"]):
         flash("Complete onboarding before creating your character sheet.", "error")
         return redirect(url_for("campaigns_page", campaign_id=membership["campaign_id"]))
 
+    return redirect(url_for("character_editor", membership_id=membership["id"]))
+
+
+@app.route("/character/<membership_id>/edit", methods=["GET", "POST"])
+def character_editor(membership_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    membership = get_membership_by_id(data, membership_id)
+    if membership is None or not user_can_access_campaign(data, g.user, membership["campaign_id"]):
+        flash("That character sheet is not available to your account.", "error")
+        return redirect(url_for("home"))
+
+    campaign = get_campaign_by_id(data, membership["campaign_id"])
+    if not can_manage_membership(g.user, membership, campaign):
+        flash("You do not have permission to edit this character.", "error")
+        return redirect(url_for("character_sheet_alt", membership_id=membership_id))
+
+    if g.user["role"] == "player" and not has_completed_onboarding(data, membership["campaign_id"], g.user["id"]):
+        flash("Complete onboarding before creating your character sheet.", "error")
+        return redirect(url_for("campaigns_page", campaign_id=membership["campaign_id"]))
+
     if request.method == "POST":
-        fields = (
-            "portrait_url",
-            "class_name",
-            "subclass",
-            "level",
-            "species",
-            "background",
-            "alignment",
-            "armor_class",
-            "speed",
-            "max_hit_points",
-            "current_hit_points",
-            "temp_hit_points",
-            "initiative_bonus",
-            "proficiency_bonus",
-            "passive_perception",
-            "passive_investigation",
-            "passive_insight",
-            "strength",
-            "dexterity",
-            "constitution",
-            "intelligence",
-            "wisdom",
-            "charisma",
-            "character_notes",
-            "notable_proficiencies",
-        )
-        for field in fields:
-            membership[field] = request.form.get(field, "").strip()
-
-        membership["death_save_successes"] = str(parse_counter(request.form.get("death_save_successes", "0")))
-        membership["death_save_failures"] = str(parse_counter(request.form.get("death_save_failures", "0")))
-
-        page = get_wiki_page_by_id(data, membership.get("wiki_page_id", ""))
-        if page is None:
-            page = {
-                "id": str(uuid.uuid4()),
-                "campaign_id": membership["campaign_id"],
-                "title": membership["character_name"],
-                "content": build_character_wiki_content(membership),
-                "source": "character_profile",
-                "membership_id": membership["id"],
-            }
-            membership["wiki_page_id"] = page["id"]
-            data["wiki_pages"].append(page)
-        else:
-            page["title"] = membership["character_name"]
-            page["content"] = build_character_wiki_content(membership)
-
+        save_character_editor_submission(data, membership)
         save_data(data)
-        flash("Character sheet saved.", "success")
-        return redirect(url_for("player_character_sheet"))
+        flash("Character updated.", "success")
+        return redirect(url_for("character_editor", membership_id=membership_id))
 
-    return render_template(
-        "character_sheet.html",
-        campaign=campaign,
-        membership=membership,
-        ability_cells=build_ability_cells(membership),
-        notable_proficiencies=parse_notable_proficiencies(membership.get("notable_proficiencies")),
-        death_save_successes=parse_counter(membership.get("death_save_successes", "0")),
-        death_save_failures=parse_counter(membership.get("death_save_failures", "0")),
-    )
+    return render_character_editor(campaign, membership)
 
 
 @app.route("/character/<membership_id>")
@@ -2473,8 +3807,8 @@ def character_sheet_alt(membership_id: str):
         ),
         None,
     )
-    can_manage = g.user["role"] == "dm" or g.user["id"] == membership["user_id"]
-    can_edit_sheet = g.user["role"] == "player" and g.user["id"] == membership["user_id"]
+    can_manage = can_manage_membership(g.user, membership, campaign)
+    can_edit_sheet = can_manage
     all_character_notes = list(reversed(get_character_notes(data, membership["campaign_id"], membership["user_id"])))
     visible_character_notes = (
         all_character_notes
@@ -2499,6 +3833,8 @@ def character_sheet_alt(membership_id: str):
         {"name": "Search", "detail": "Look for hidden threats or clues."},
         {"name": "Use an Object", "detail": "Interact with gear beyond the free object interaction."},
     ]
+    inventory_items = build_inventory_items(membership)
+    survey_raw = survey.get("raw_responses", {}) if isinstance(survey, dict) else {}
     return render_template(
         "character_page_alt.html",
         campaign=campaign,
@@ -2508,33 +3844,42 @@ def character_sheet_alt(membership_id: str):
         can_manage=can_manage,
         can_edit_sheet=can_edit_sheet,
         ability_cells=build_ability_cells(membership),
+        saving_throw_rows=build_saving_throw_rows(membership),
+        skill_rows=build_skill_rows(membership),
+        training_sections=build_training_sections(membership),
         notable_proficiencies=build_summary_notable_proficiencies(membership.get("notable_proficiencies")),
         death_save_successes=parse_counter(membership.get("death_save_successes", "0")),
         death_save_failures=parse_counter(membership.get("death_save_failures", "0")),
         character_notes=rendered_character_notes,
         quick_actions=quick_actions,
+        inventory_items=inventory_items,
         rendered_story_hook=render_wiki_markup(
-            survey.story_hook if survey and survey.story_hook else membership.character_notes or "No character hook has been written yet.",
+            survey.get("story_hook") if survey and survey.get("story_hook") else membership.get("character_notes") or "No character hook has been written yet.",
             data,
             membership["campaign_id"],
         ),
         rendered_character_notes_text=render_wiki_markup(
-            membership.character_notes or "No character notes have been added yet.",
+            membership.get("character_notes") or "No character notes have been added yet.",
             data,
             membership["campaign_id"],
         ),
         rendered_dream_campaign=render_wiki_markup(
-            survey.raw_responses.dream_campaign if survey and survey.raw_responses and survey.raw_responses.dream_campaign else "No dream campaign note has been added yet.",
+            survey_raw.get("dream_campaign") or "No dream campaign note has been added yet.",
             data,
             membership["campaign_id"],
         ),
         rendered_expectation_notes=render_wiki_markup(
-            survey.raw_responses.expectation_notes if survey and survey.raw_responses and survey.raw_responses.expectation_notes else "No extra campaign expectations have been shared yet.",
+            survey_raw.get("expectation_notes") or "No extra campaign expectations have been shared yet.",
             data,
             membership["campaign_id"],
         ),
         rendered_player_spotlight=render_wiki_markup(
-            survey.raw_responses.player_note if survey and survey.raw_responses and survey.raw_responses.player_note else "No player preference note has been added yet.",
+            survey_raw.get("player_note") or "No player preference note has been added yet.",
+            data,
+            membership["campaign_id"],
+        ),
+        rendered_features_traits=render_wiki_markup(
+            membership.get("features_traits", "") or "No features, traits, or special rules have been added yet.",
             data,
             membership["campaign_id"],
         ),
@@ -2555,15 +3900,15 @@ def character_world_entry(membership_id: str):
     data = load_data()
     membership = get_membership_by_id(data, membership_id)
     if membership is None or not user_can_access_campaign(data, g.user, membership["campaign_id"]):
-        flash("That character world entry is not available to your account.", "error")
+        flash("That character world page is not available to your account.", "error")
         return redirect(url_for("home"))
 
     page = get_wiki_page_by_id(data, membership.get("wiki_page_id", ""))
     if page is None:
-        flash("This character does not have a world entry yet.", "error")
+        flash("This character does not have a world page yet.", "error")
         return redirect(url_for("character_page", membership_id=membership_id))
     if not can_user_view_world_page(data, g.user, page):
-        flash("That character world entry is not available to your account.", "error")
+        flash("That character world page is not available to your account.", "error")
         return redirect(url_for("character_page", membership_id=membership_id))
 
     campaign = get_campaign_by_id(data, membership["campaign_id"])
@@ -2597,7 +3942,7 @@ def world_entry(page_id: str):
     data = load_data()
     page = get_wiki_page_by_id(data, page_id)
     if page is None or not can_user_view_world_page(data, g.user, page):
-        flash("That world entry is not available to your account.", "error")
+        flash("That world page is not available to your account.", "error")
         return redirect(url_for("home"))
 
     campaign = get_campaign_by_id(data, page["campaign_id"])
@@ -2679,6 +4024,13 @@ def join_campaign():
                 "charisma": "",
                 "character_notes": "",
                 "notable_proficiencies": "",
+                "saving_throw_proficiencies": "",
+                "armor_training": "",
+                "weapon_training": "",
+                "tool_training": "",
+                "languages": "",
+                "features_traits": "",
+                "inventory_items": [],
                 "death_save_successes": "0",
                 "death_save_failures": "0",
             }
@@ -2913,6 +4265,164 @@ def player_death_saves():
     return redirect(url_for("player_home"))
 
 
+@app.route("/character/<membership_id>/death-saves", methods=["POST"])
+def update_character_death_saves(membership_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    membership = get_membership_by_id(data, membership_id)
+    if membership is None or not user_can_access_campaign(data, g.user, membership["campaign_id"]):
+        flash("That character sheet is not available to your account.", "error")
+        return redirect(url_for("home"))
+
+    campaign = get_campaign_by_id(data, membership["campaign_id"])
+    if not can_manage_membership(g.user, membership, campaign):
+        flash("You do not have permission to update this character.", "error")
+        return redirect(url_for("character_sheet_alt", membership_id=membership_id))
+
+    membership["death_save_successes"] = str(parse_counter(request.form.get("death_save_successes", "0")))
+    membership["death_save_failures"] = str(parse_counter(request.form.get("death_save_failures", "0")))
+    save_data(data)
+
+    if is_fetch_request():
+        return jsonify(
+            {
+                "ok": True,
+                "death_save_successes": membership["death_save_successes"],
+                "death_save_failures": membership["death_save_failures"],
+            }
+        )
+    return redirect(request.form.get("next") or url_for("character_sheet_alt", membership_id=membership_id))
+
+
+@app.route("/character/<membership_id>/hit-points", methods=["POST"])
+def update_character_hit_points(membership_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    membership = get_membership_by_id(data, membership_id)
+    if membership is None or not user_can_access_campaign(data, g.user, membership["campaign_id"]):
+        flash("That character sheet is not available to your account.", "error")
+        return redirect(url_for("home"))
+
+    campaign = get_campaign_by_id(data, membership["campaign_id"])
+    if not can_manage_membership(g.user, membership, campaign):
+        flash("You do not have permission to update this character.", "error")
+        return redirect(url_for("character_sheet_alt", membership_id=membership_id))
+
+    membership["current_hit_points"] = str(parse_number_string(request.form.get("current_hit_points", membership.get("current_hit_points", "0")), minimum=0, default=0))
+    membership["temp_hit_points"] = str(parse_number_string(request.form.get("temp_hit_points", membership.get("temp_hit_points", "0")), minimum=0, default=0))
+    save_data(data)
+    flash("Hit points updated.", "success")
+    return redirect(request.form.get("next") or url_for("character_sheet_alt", membership_id=membership_id))
+
+
+@app.route("/character/<membership_id>/inventory/add", methods=["POST"])
+def add_character_inventory_item(membership_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    membership = get_membership_by_id(data, membership_id)
+    if membership is None or not user_can_access_campaign(data, g.user, membership["campaign_id"]):
+        flash("That character sheet is not available to your account.", "error")
+        return redirect(url_for("home"))
+
+    campaign = get_campaign_by_id(data, membership["campaign_id"])
+    if not can_manage_membership(g.user, membership, campaign):
+        flash("You do not have permission to update this character.", "error")
+        return redirect(url_for("character_sheet_alt", membership_id=membership_id))
+
+    item_name = request.form.get("item_name", "").strip()
+    if not item_name:
+        flash("Item name is required.", "error")
+        return redirect(request.form.get("next") or url_for("character_sheet_alt", membership_id=membership_id))
+
+    inventory_items = build_inventory_items(membership)
+    inventory_items.append(
+        {
+            "id": str(uuid.uuid4()),
+            "name": item_name,
+            "quantity": max(1, parse_number_string(request.form.get("quantity", "1"), minimum=1, default=1)),
+            "description": request.form.get("description", "").strip(),
+            "equipped": bool(request.form.get("equipped")),
+            "source": request.form.get("source", "").strip(),
+        }
+    )
+    membership["inventory_items"] = inventory_items
+    save_data(data)
+    flash("Item added to inventory.", "success")
+    return redirect(request.form.get("next") or url_for("character_sheet_alt", membership_id=membership_id))
+
+
+@app.route("/character/<membership_id>/inventory/<item_id>/update", methods=["POST"])
+def update_character_inventory_item(membership_id: str, item_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    membership = get_membership_by_id(data, membership_id)
+    if membership is None or not user_can_access_campaign(data, g.user, membership["campaign_id"]):
+        flash("That character sheet is not available to your account.", "error")
+        return redirect(url_for("home"))
+
+    campaign = get_campaign_by_id(data, membership["campaign_id"])
+    if not can_manage_membership(g.user, membership, campaign):
+        flash("You do not have permission to update this character.", "error")
+        return redirect(url_for("character_sheet_alt", membership_id=membership_id))
+
+    inventory_items = build_inventory_items(membership)
+    item = next((entry for entry in inventory_items if entry["id"] == item_id), None)
+    if item is None:
+        flash("That inventory item could not be found.", "error")
+        return redirect(request.form.get("next") or url_for("character_sheet_alt", membership_id=membership_id))
+
+    item_name = request.form.get("item_name", "").strip()
+    if not item_name:
+        flash("Item name is required.", "error")
+        return redirect(request.form.get("next") or url_for("character_sheet_alt", membership_id=membership_id))
+
+    item["name"] = item_name
+    item["quantity"] = max(1, parse_number_string(request.form.get("quantity", item.get("quantity", 1)), minimum=1, default=1))
+    item["description"] = request.form.get("description", "").strip()
+    item["equipped"] = bool(request.form.get("equipped"))
+    item["source"] = request.form.get("source", "").strip()
+    membership["inventory_items"] = inventory_items
+    save_data(data)
+    flash("Inventory updated.", "success")
+    return redirect(request.form.get("next") or url_for("character_sheet_alt", membership_id=membership_id))
+
+
+@app.route("/character/<membership_id>/inventory/<item_id>/delete", methods=["POST"])
+def delete_character_inventory_item(membership_id: str, item_id: str):
+    redirect_response = require_login()
+    if redirect_response:
+        return redirect_response
+
+    data = load_data()
+    membership = get_membership_by_id(data, membership_id)
+    if membership is None or not user_can_access_campaign(data, g.user, membership["campaign_id"]):
+        flash("That character sheet is not available to your account.", "error")
+        return redirect(url_for("home"))
+
+    campaign = get_campaign_by_id(data, membership["campaign_id"])
+    if not can_manage_membership(g.user, membership, campaign):
+        flash("You do not have permission to update this character.", "error")
+        return redirect(url_for("character_sheet_alt", membership_id=membership_id))
+
+    inventory_items = build_inventory_items(membership)
+    membership["inventory_items"] = [entry for entry in inventory_items if entry["id"] != item_id]
+    save_data(data)
+    flash("Item removed from inventory.", "success")
+    return redirect(request.form.get("next") or url_for("character_sheet_alt", membership_id=membership_id))
+
+
 @app.route("/player/notes/<note_id>/delete", methods=["POST"])
 def delete_player_note(note_id: str):
     redirect_response = require_login()
@@ -2971,12 +4481,12 @@ def delete_dm_broadcast(broadcast_id: str):
         None,
     )
     if broadcast is None:
-        flash("That broadcast could not be found or does not belong to you.", "error")
+        flash("That DM action could not be found or does not belong to you.", "error")
         return redirect(request.form.get("next") or request.referrer or url_for("dm_dashboard"))
 
     data["announcements"] = [item for item in data["announcements"] if item["id"] != broadcast_id]
     save_data(data)
-    flash("Broadcast deleted.", "success")
+    flash("DM action deleted.", "success")
     return redirect(request.form.get("next") or request.referrer or url_for("dm_dashboard"))
 
 
@@ -2993,8 +4503,8 @@ def add_broadcast_to_notes(broadcast_id: str):
     broadcast = get_broadcast_by_id(data, broadcast_id)
     if membership is None or broadcast is None or broadcast["campaign_id"] != membership["campaign_id"]:
         if is_fetch_request():
-            return jsonify({"ok": False, "message": "That broadcast is not available in your active campaign."}), 404
-        flash("That broadcast is not available in your active campaign.", "error")
+            return jsonify({"ok": False, "message": "That DM action is not available in your active campaign."}), 404
+        flash("That DM action is not available in your active campaign.", "error")
         return redirect(url_for("player_home"))
 
     targets = broadcast.get("target_user_ids") or []

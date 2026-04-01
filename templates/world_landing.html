@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}World Entries | TavernKeeper{% endblock %}
+{% block title %}World Pages | TavernKeeper{% endblock %}
 {% block app_content %}
   <div class="dashboard-header">
     <div>
       <p class="eyebrow">World Atlas</p>
-      <h2>{{ active_sidebar_campaign.name if active_sidebar_campaign else "World Entries" }}</h2>
+      <h2>{{ active_sidebar_campaign.name if active_sidebar_campaign else "World Pages" }}</h2>
     </div>
     <div class="character-page-actions">
       <a class="primary-btn" href="{{ url_for('world_atlas') }}">Back To World Atlas</a>
@@ -34,7 +34,7 @@
           </article>
         {% endfor %}
       {% else %}
-        <p>No world entries are available for the active campaign yet.</p>
+        <p>No world pages are available for the active campaign yet.</p>
       {% endif %}
     </div>
   </section>

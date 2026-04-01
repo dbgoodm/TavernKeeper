@@ -5,35 +5,65 @@
       "email": "test@test.com",
       "display_name": "DM",
       "password_hash": "scrypt:32768:8:1$mj8SdJnktpFZFWlW$b68a2d0458430ea29be7fab25fc7b8d8481f346afcc3c7ea8345782ae51066d5868edd3d32cbf6971d204d493bcb7cfacbb936662fd55c9b51dd1c3962f39a34",
-      "role": "dm"
+      "role": "dm",
+      "profile_image_url": "",
+      "pronouns": "",
+      "default_note_visibility": "private",
+      "ui_density": "comfortable",
+      "spoken_language": "English",
+      "timezone": "America/New_York"
     },
     {
       "id": "06af1816-60d8-4783-a71c-8d34cb0a607e",
       "email": "test2@test.com",
       "display_name": "Player",
       "password_hash": "scrypt:32768:8:1$caIp82DjlmIQzdTr$001a6e8a7a47b935c6b510739776c97c80bcca8ee677e7fa6ab074a30e5a4876730264a0180aa07738e441046055aac716a6f390e6ed359ba9d8e5455c27782b",
-      "role": "player"
+      "role": "player",
+      "profile_image_url": "",
+      "pronouns": "",
+      "default_note_visibility": "private",
+      "ui_density": "comfortable",
+      "spoken_language": "English",
+      "timezone": "America/New_York"
     },
     {
       "id": "27a12181-6c50-4517-96ff-dc787df28935",
       "email": "other@test.com",
       "display_name": "Other",
       "password_hash": "scrypt:32768:8:1$70qrLuWYEWbQmovj$2c0fddada97fbd67a4ba221f9fb7c72b55cbc4992226a7a4eec954d30034f459647ee333c683cf1dd12ea82786c6a01f5639244f3e675be1d64ffcab9172fff1",
-      "role": "player"
+      "role": "player",
+      "profile_image_url": "",
+      "pronouns": "",
+      "default_note_visibility": "private",
+      "ui_density": "comfortable",
+      "spoken_language": "English",
+      "timezone": "America/New_York"
     },
     {
       "id": "dce2a50a-6b1a-4e36-b555-f2a93454f30c",
       "email": "rowan@test.com",
       "display_name": "Rowan",
       "password_hash": "scrypt:32768:8:1$70qrLuWYEWbQmovj$2c0fddada97fbd67a4ba221f9fb7c72b55cbc4992226a7a4eec954d30034f459647ee333c683cf1dd12ea82786c6a01f5639244f3e675be1d64ffcab9172fff1",
-      "role": "player"
+      "role": "player",
+      "profile_image_url": "",
+      "pronouns": "",
+      "default_note_visibility": "private",
+      "ui_density": "comfortable",
+      "spoken_language": "English",
+      "timezone": "America/New_York"
     },
     {
       "id": "a6c77561-bad3-43e3-a7fb-82c77d73f0bf",
       "email": "thorne@test.com",
       "display_name": "Thorne",
       "password_hash": "scrypt:32768:8:1$70qrLuWYEWbQmovj$2c0fddada97fbd67a4ba221f9fb7c72b55cbc4992226a7a4eec954d30034f459647ee333c683cf1dd12ea82786c6a01f5639244f3e675be1d64ffcab9172fff1",
-      "role": "player"
+      "role": "player",
+      "profile_image_url": "",
+      "pronouns": "",
+      "default_note_visibility": "private",
+      "ui_density": "comfortable",
+      "spoken_language": "English",
+      "timezone": "America/New_York"
     }
   ],
   "campaigns": [
@@ -43,7 +73,91 @@
       "premise": "A harbor-city mystery full of drowned bells, rival smugglers, strange tides, and a conspiracy sleeping beneath the piers.",
       "invite_code": "5673-BE06",
       "dm_user_id": "daa9556d-1e4d-4e93-b138-3fbe4d5fb242",
-      "world_editor_presets": {}
+      "world_editor_presets": {},
+      "featured_lore_entry_ids": [],
+      "world_atlas_title": "",
+      "world_atlas_intro": "",
+      "world_atlas_layout": [
+        {
+          "key": "featured_lore",
+          "visible": true,
+          "span": 3
+        },
+        {
+          "key": "featured_collections",
+          "visible": true,
+          "span": 3
+        },
+        {
+          "key": "rich_text_block",
+          "visible": true,
+          "span": 1
+        },
+        {
+          "key": "featured_page",
+          "visible": true,
+          "span": 1
+        },
+        {
+          "key": "category_spotlight",
+          "visible": true,
+          "span": 1
+        }
+      ],
+      "world_atlas_module_settings": {
+        "featured_lore": {},
+        "featured_collections": {
+          "collection_ids": [
+            "13a638a4-d849-4eab-8594-201576721969",
+            "45361473-d5f5-4a5e-9e4b-0e9de366c806",
+            "3a2ed3f4-a0cf-4098-bf44-c4b54c8ca2ab",
+            "831a7c5e-aec6-41b9-9ac7-9e512411a8d7"
+          ],
+          "configured": true
+        },
+        "recent_pages": {
+          "title": "Recent Pages",
+          "preview_line": "Fresh additions to the World Atlas Portal.",
+          "category_key": "all",
+          "count": "6",
+          "display_style": "cards"
+        },
+        "image_feature": {
+          "title": "Image Feature",
+          "image_url": "",
+          "image_alignment": "right",
+          "body": "",
+          "button_label": "",
+          "button_href": ""
+        },
+        "rich_text_block": {
+          "title": "Lore Block",
+          "body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc finibus egestas felis eu dignissim. In hac habitasse platea dictumst. Vestibulum ac luctus augue, a bibendum est. Donec nunc dui, aliquam id magna quis, molestie sollicitudin magna. Sed ut purus at mauris tristique tempor. Morbi tempus vulputate massa sit amet iaculis. Donec volutpat augue diam, eleifend porttitor augue eleifend nec. Pellentesque euismod mauris nec ipsum fringilla consectetur. Phasellus rutrum nisl id magna ultricies ultricies.\r\n\r\nMaecenas rhoncus nisi vitae aliquam mollis. Nam mattis massa eu dictum pretium. Curabitur eu est vel diam iaculis dignissim. Aenean suscipit vel magna sit amet porttitor. Nam ac felis consequat, rhoncus odio a, elementum diam. Etiam a tincidunt ex. Quisque bibendum arcu justo, a elementum odio euismod sed. Fusce consectetur dolor eget maximus euismod. Aliquam ac turpis at orci efficitur auctor scelerisque vitae ex. Suspendisse egestas leo eget hendrerit lacinia. Cras varius metus odio, eu facilisis justo accumsan sed. In sodales magna vitae purus vulputate aliquam. Fusce suscipit vehicula libero, nec elementum ligula fermentum ut.\r\n\r\nNam a dui hendrerit, efficitur urna ac, laoreet tortor. Nullam id enim dapibus, vulputate risus et, vehicula mi. Aliquam sit amet diam ultrices, sagittis elit nec, consequat ligula. Praesent venenatis lorem vitae finibus ultrices. Nullam enim sem, rhoncus in sem et, molestie commodo mi. Nullam condimentum est vitae risus vestibulum, a elementum nunc convallis. Aliquam erat volutpat. Quisque ac justo a velit aliquet finibus at eu mauris. Aenean erat purus, egestas vel velit sit amet, placerat mattis purus. Aenean sit amet consectetur turpis. Phasellus neque dolor, tincidunt eget massa convallis, sollicitudin vestibulum neque. Sed ac convallis sapien, sit amet tristique orci. Mauris scelerisque metus id turpis laoreet fringilla at sed tellus. Nulla massa tellus, luctus ac luctus at, gravida ut risus. Vivamus et velit nec dui lobortis porttitor sed eget sapien. Sed a libero ut orci rhoncus tincidunt nec vel quam.",
+          "style": "standard"
+        },
+        "featured_page": {
+          "title": "Featured Page",
+          "page_id": "9ea3712f-984f-4ff7-901b-6e6b8fc04647",
+          "show_category": true,
+          "show_preview_line": true,
+          "show_image": true
+        },
+        "category_spotlight": {
+          "title": "Category Spotlight",
+          "category_key": "gods",
+          "count": "5",
+          "sort_mode": "alphabetical",
+          "display_style": "list"
+        },
+        "gods": {},
+        "places": {},
+        "factions": {},
+        "people": {},
+        "flora-fauna": {},
+        "history": {},
+        "culture": {},
+        "misc": {}
+      }
     }
   ],
   "memberships": [
@@ -79,7 +193,14 @@
       "wiki_page_id": "1f8e83fd-e548-43fd-b6ef-cb47aa87ce44",
       "notable_proficiencies": "",
       "death_save_successes": "0",
-      "death_save_failures": "0"
+      "death_save_failures": "0",
+      "saving_throw_proficiencies": "",
+      "armor_training": "",
+      "weapon_training": "",
+      "tool_training": "",
+      "languages": "",
+      "features_traits": "",
+      "inventory_items": []
     },
     {
       "id": "31303dc5-16b8-4312-8fe1-4c2e31e66622",
@@ -99,7 +220,14 @@
       "wiki_page_id": "18264fa4-74bb-4c1e-9a88-8538f4234762",
       "notable_proficiencies": "",
       "death_save_successes": "0",
-      "death_save_failures": "0"
+      "death_save_failures": "0",
+      "saving_throw_proficiencies": "",
+      "armor_training": "",
+      "weapon_training": "",
+      "tool_training": "",
+      "languages": "",
+      "features_traits": "",
+      "inventory_items": []
     },
     {
       "id": "76c5d074-13ce-44a5-a30a-b8fc79cdbe83",
@@ -119,7 +247,14 @@
       "wiki_page_id": "4c4d261f-ac28-4f01-9c84-bb0be40dd708",
       "notable_proficiencies": "",
       "death_save_successes": "0",
-      "death_save_failures": "0"
+      "death_save_failures": "0",
+      "saving_throw_proficiencies": "",
+      "armor_training": "",
+      "weapon_training": "",
+      "tool_training": "",
+      "languages": "",
+      "features_traits": "",
+      "inventory_items": []
     },
     {
       "id": "8332267a-c3c4-4630-8d84-af4086a39ced",
@@ -139,7 +274,14 @@
       "wiki_page_id": "ec5a23a2-08bc-482f-b640-3566ded6a110",
       "notable_proficiencies": "",
       "death_save_successes": "0",
-      "death_save_failures": "0"
+      "death_save_failures": "0",
+      "saving_throw_proficiencies": "",
+      "armor_training": "",
+      "weapon_training": "",
+      "tool_training": "",
+      "languages": "",
+      "features_traits": "",
+      "inventory_items": []
     }
   ],
   "surveys": [
@@ -1162,6 +1304,88 @@
       "quest_id": "f40ec41c-16eb-4bd4-b746-2ed9654dc05f",
       "user_id": "27a12181-6c50-4517-96ff-dc787df28935",
       "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00"
+    }
+  ],
+  "world_collections": [
+    {
+      "id": "831a7c5e-aec6-41b9-9ac7-9e512411a8d7",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "The Divine Pantheon of Aetheria",
+      "preview_line": "A featured collection gathering the known gods, deities, and divine powers of Aetheria.",
+      "body": "# The Divine Pantheon of Aetheria\n\nThe divine pantheon of Aetheria.\n\n## Members\n- Aegis, The Shieldbearer: Guardian deity of protection, resolve, and those who stand between danger and the vulnerable.\n- Aquila, The Winged Watcher: Patron of high winds, distant sight, vigilance, and messages carried across the sky.\n- Aurora, The Radiant Muse: Beacon of inspiration, beauty, performance, and dawn-lit revelation.\n- Chronos, The Time Keeper: Warden of cycles, memory, inevitability, and the long turning of ages.\n- Ignatius, The Flamebearer: Divine spark of fire, passion, craft, war-fervor, and consuming transformation.\n- Lunara, The Lunar Sentinel: Watcher of moonlight, still waters, dreams, omens, and quiet warding.\n- Nimbus, The Mistweaver: Shaper of fog, liminal paths, hidden things, and veils between certainty and myth.\n- Ororo, Mistress of Storms: Sovereign of thunder, rainfall, sea-tempests, and the wrathful sky.\n- Stellaris, The Celestial Guardian: Keeper of stars, navigation, cosmic order, and oaths sworn beneath the heavens.\n- Sylvana, The Shadow Weaver: Mistress of secrecy, twilight, subtle power, and truths best spoken in darkness.\n- Terra, The Earthshaper: Patron of stone, harvest, endurance, fertile lands, and mountains that remember.\n- Thanatos, The Shepherd of Finality: Guide of endings, death, graves, and the last threshold every soul must cross.\n\n## Notes\nThis entry was imported from the visible Kanka pantheon listing provided during prototyping.",
+      "entry_ids": [
+        "c2b9695e-29c5-4f9d-b29c-ac4ec48956ca",
+        "2906174b-9a93-4d58-adc4-34d6fb6e253f",
+        "1276e151-be45-4803-9f23-7454fdcfe1f0",
+        "4af94490-cbc1-4fa5-8a7d-cf43456ad14c",
+        "7f6efcf8-fc59-4108-8786-a8a7c5417e7f",
+        "d070208f-b22f-4f1c-8c52-50d24b5f6202",
+        "5a4eb594-e3db-4a2c-b396-b935151c35bf",
+        "17633f95-13fd-4b68-a0ba-62825c88ec9a",
+        "d9e98cb9-4632-4cd7-adf6-2a4efdb0529e",
+        "f4ef8fc0-0d61-4d8f-ace8-aee3df51dfcc",
+        "2aa2b55d-018a-42dc-933a-eba41a56daa0",
+        "a895897a-9a12-4d35-8f81-918d84d5afc2"
+      ],
+      "created_at": "2026-04-01T05:14:52.915910+00:00",
+      "updated_at": "2026-04-01T05:14:52.915918+00:00"
+    },
+    {
+      "id": "13a638a4-d849-4eab-8594-201576721969",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "Continents of Aetheria",
+      "preview_line": "A featured collection of the major continents, realms, and distant frontiers of the world.",
+      "body": "# Continents of Aetheria\n\nA visible list of the major continental or world regions shown in the public Kanka location index for Aetheria.\n\n## Regions\n- Celestia: A major continent or realm within Aetheria, likely associated with celestial influence, radiant authority, or sky-bound civilizations.\n- Stormhold: A continent or dominant region whose name suggests fortified coasts, thunderous weather, warlike history, or storm-touched peoples.\n- The Azure Citadel: A named continental-scale domain or major landmass tied to blue waters, arcane power, or a central bastion-state.\n- The Elysium Reach: A broad continental region whose title suggests fertile lands, divine favor, noble enclaves, or a mythic frontier.\n- The Maelstrom: A dangerous and dramatic world region likely defined by violent seas, instability, tempest activity, or cataclysmic geography.\n- The Whispering Isles: An island-chain region marked by secrecy, rumor, mist, spirits, or cultures shaped by isolation and the sea.\n\n## Import Note\nThis overview was created from the visible Kanka locations listing during prototyping.",
+      "entry_ids": [
+        "3519618f-c2f3-46f3-8209-f59939355a1f",
+        "a138bef3-6d71-437d-8cd9-344a78e2bea1",
+        "f6a8db37-70c9-4f94-a219-a4fc1e4fb2d2",
+        "1382726f-e18d-4286-b011-b0c712491882",
+        "f3c5e695-ea58-453f-8835-cdd1b5262fc0",
+        "c8fce85d-d26d-495c-8f3a-c5af63d3dc93"
+      ],
+      "created_at": "2026-04-01T05:14:52.915928+00:00",
+      "updated_at": "2026-04-01T05:14:52.915929+00:00"
+    },
+    {
+      "id": "45361473-d5f5-4a5e-9e4b-0e9de366c806",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "Factions of Aetheria",
+      "preview_line": "A featured collection of the councils, orders, and power blocs shaping the setting.",
+      "body": "# Factions of Aetheria\n\nA visible list of known organizations from the public Kanka organization index for Aetheria.\n\n## Factions\n- Celestial Council: A major governing or influential body within Aetheria, likely tied to divine, noble, or cosmic authority.\n- Council Of Archmages: A powerful collective of elite spellcasters whose decisions likely shape magical law, research, and political balance.\n- The Divine Pantheon: A central divine institution or recognized body of gods within the setting.\n\n## Import Note\nThis overview was created from the visible Kanka organizations listing during prototyping.",
+      "entry_ids": [
+        "7a7a9a06-5864-499f-9fa9-f3e8d1d4284a",
+        "9727a5f1-418a-410a-9215-3e6361af9ac9",
+        "1556fbb5-51cf-41ec-8a6b-648a84d6ea8e"
+      ],
+      "created_at": "2026-04-01T05:14:52.915933+00:00",
+      "updated_at": "2026-04-01T05:14:52.915935+00:00"
+    },
+    {
+      "id": "3a2ed3f4-a0cf-4098-bf44-c4b54c8ca2ab",
+      "campaign_id": "e888577a-8f5f-4da6-b698-b2ef6bf9eb00",
+      "title": "Races of Aetheria",
+      "preview_line": "A featured collection of the peoples and cultures known across Aetheria.",
+      "body": "# Races of Aetheria\n\nA visible list of known races from the public Kanka race index for Aetheria.\n\n## Peoples\n- Avis\n- Dragonborn\n- Dwarves\n- Eternals\n- Gnomes\n- Goblins\n- God\n- Goliaths\n- Haren\n- High Elves\n- Humans\n- Leonin\n- Orcs\n- Satyrs\n- Shadowkin Elves\n\n## Import Note\nThis overview was created from the visible Kanka races listing during prototyping.",
+      "entry_ids": [
+        "6a0f23f6-e7c8-48b5-89dc-19d4ac163373",
+        "2a2912a7-0b01-4598-b980-c51c10075396",
+        "f4141dce-8e7e-4b0e-a303-5737d068131e",
+        "a4cde4fe-a91b-4838-8ee2-32ba54eed820",
+        "0ef83d97-7e1d-4add-9072-76c461cba2e3",
+        "4a7371b3-874e-4bb7-b85b-756109652e2a",
+        "d89b3523-cb01-44cd-aaee-e208c5fc97d8",
+        "ab4cc662-2516-4cba-94ee-192967d99750",
+        "83f5756b-8dda-4cb2-93ec-0ff13e937ed7",
+        "9983369d-f4d1-4bcc-a8e1-720fe776bcaf",
+        "248df480-368e-4cf4-a98b-ac06b3211ee0",
+        "14ea19e2-adc0-4ae9-82b8-9f9b2de208ef",
+        "a5efd1cc-ac61-438e-8fac-44ecdb000946",
+        "e92a191f-e66d-4fbe-932f-7dede105464b",
+        "b7e7ad0b-6738-4a34-98b4-cd0e079aeb9a"
+      ],
+      "created_at": "2026-04-01T05:14:52.915938+00:00",
+      "updated_at": "2026-04-01T05:14:52.915939+00:00"
     }
   ]
 }

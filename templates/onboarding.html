@@ -60,7 +60,9 @@
           </label>
           <label class="field full">
             <span>What do you love most in tabletop RPGs?</span>
-            <textarea name="favorite_parts" rows="4" placeholder="Character drama, tactical combat, mysteries, exploration, roleplay-heavy scenes, weird lore..." required></textarea>
+              {% set toolbar_target = "favorite_parts" %}
+              {% include "_markdown_toolbar.html" %}
+              <textarea id="favorite_parts" name="favorite_parts" rows="4" placeholder="Character drama, tactical combat, mysteries, exploration, roleplay-heavy scenes, weird lore..." required></textarea>
           </label>
         </div>
       </section>
@@ -123,7 +125,9 @@
           </label>
           <label class="field full">
             <span>Scheduling notes for your DM</span>
-            <textarea name="schedule_notes" rows="4" placeholder="Rotating shifts, travel, family obligations, need advance notice, no Fridays, and so on."></textarea>
+              {% set toolbar_target = "schedule_notes" %}
+              {% include "_markdown_toolbar.html" %}
+              <textarea id="schedule_notes" name="schedule_notes" rows="4" placeholder="Rotating shifts, travel, family obligations, need advance notice, no Fridays, and so on."></textarea>
           </label>
         </div>
       </section>
@@ -180,11 +184,15 @@
         </div>
         <label class="field full survey-gap">
           <span>What specific campaign concepts sound exciting to you?</span>
-          <textarea name="genre_details" rows="4" placeholder="Treasure hunting across haunted islands, gothic monster hunting, skyship trade routes, secret societies in a steampunk capital..."></textarea>
+              {% set toolbar_target = "genre_details" %}
+              {% include "_markdown_toolbar.html" %}
+              <textarea id="genre_details" name="genre_details" rows="4" placeholder="Treasure hunting across haunted islands, gothic monster hunting, skyship trade routes, secret societies in a steampunk capital..."></textarea>
         </label>
         <label class="field full">
           <span>Tone notes for your DM</span>
-          <textarea name="tone_notes" rows="4" placeholder="I love dark worlds with hopeful characters, danger without relentless bleakness, and humor without full parody."></textarea>
+              {% set toolbar_target = "tone_notes" %}
+              {% include "_markdown_toolbar.html" %}
+              <textarea id="tone_notes" name="tone_notes" rows="4" placeholder="I love dark worlds with hopeful characters, danger without relentless bleakness, and humor without full parody."></textarea>
         </label>
         <div class="fields-2">
           <label class="field">
@@ -197,7 +205,9 @@
           </label>
           <label class="field full">
             <span>Boundary notes for your DM</span>
-            <textarea name="boundary_notes" rows="4" placeholder="Add any nuance or context that matters for framing, tone, or degree of detail." required></textarea>
+              {% set toolbar_target = "boundary_notes" %}
+              {% include "_markdown_toolbar.html" %}
+              <textarea id="boundary_notes" name="boundary_notes" rows="4" placeholder="Add any nuance or context that matters for framing, tone, or degree of detail." required></textarea>
           </label>
         </div>
       </section>
@@ -219,15 +229,21 @@
         </div>
         <label class="field full survey-gap">
           <span>What makes a campaign feel satisfying to you?</span>
-          <textarea name="expectation_notes" rows="4" placeholder="Meaningful choices, recurring villains, emotionally strong NPCs, memorable set pieces, crunchy boss fights, and room to pursue backstory."></textarea>
+              {% set toolbar_target = "expectation_notes" %}
+              {% include "_markdown_toolbar.html" %}
+              <textarea id="expectation_notes" name="expectation_notes" rows="4" placeholder="Meaningful choices, recurring villains, emotionally strong NPCs, memorable set pieces, crunchy boss fights, and room to pursue backstory."></textarea>
         </label>
         <label class="field full">
           <span>Describe your dream online campaign</span>
-          <textarea name="dream_campaign" rows="4" placeholder="A roleplay-heavy nautical horror game with bursts of tactical combat, a strong mystery core, emotional party bonds, and a balance of dread and hope." required></textarea>
+              {% set toolbar_target = "dream_campaign" %}
+              {% include "_markdown_toolbar.html" %}
+              <textarea id="dream_campaign" name="dream_campaign" rows="4" placeholder="A roleplay-heavy nautical horror game with bursts of tactical combat, a strong mystery core, emotional party bonds, and a balance of dread and hope." required></textarea>
         </label>
         <label class="field full">
           <span>Character hook or story thread for your DM</span>
-          <textarea name="story_hook" rows="4" placeholder="My character is secretly connected to the drowned chapel and is searching for a lost saint map." required></textarea>
+              {% set toolbar_target = "story_hook" %}
+              {% include "_markdown_toolbar.html" %}
+              <textarea id="story_hook" name="story_hook" rows="4" placeholder="My character is secretly connected to the drowned chapel and is searching for a lost saint map." required></textarea>
         </label>
       </section>
 

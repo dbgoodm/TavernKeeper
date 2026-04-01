@@ -145,9 +145,8 @@
           </div>
         </div>
         <div class="player-character-actions">
-          <a class="primary-btn" href="{{ url_for('character_sheet_alt', membership_id=membership.id) }}">Live Sheet</a>
-          <a class="primary-btn" href="{{ url_for('player_character_sheet', campaign_id=membership.campaign_id) }}">Character Sheet</a>
-          <a class="ghost-btn" href="{{ url_for('character_page', membership_id=membership.id) }}">Character Page</a>
+          <a class="primary-btn" href="{{ url_for('character_sheet_alt', membership_id=membership.id) }}">Character Sheet</a>
+          <a class="ghost-btn" href="{{ url_for('character_editor', membership_id=membership.id) }}">Edit Character</a>
         </div>
       </div>
     </section>
@@ -186,7 +185,7 @@
                 {% endif %}
               </div>
               <div>
-                <h4><a class="card-title-link" href="{{ url_for('character_page', membership_id=member.membership_id) }}">{{ member.character_name }}</a></h4>
+                <h4><a class="card-title-link" href="{{ url_for('character_sheet_alt', membership_id=member.membership_id) }}">{{ member.character_name }}</a></h4>
                 <p>{{ member.class_name }} - {{ member.subclass }}</p>
               </div>
             </div>

@@ -40,11 +40,11 @@
               </form>
               <a class="ghost-btn" href="{{ url_for('dm_dashboard' if current_user.role == 'dm' else 'player_home') }}">Open Dashboard</a>
               {% if current_user.role == "player" %}
-                {% if not item.has_completed_onboarding %}
-                  <a class="primary-btn attention-btn" href="{{ url_for('player_onboarding', campaign_id=item.id) }}">Complete Onboarding</a>
-                {% elif not item.has_completed_character_sheet %}
-                  <a class="ghost-btn" href="{{ url_for('player_character_sheet', campaign_id=item.id) }}">Character Sheet</a>
-                {% endif %}
+                  {% if not item.has_completed_onboarding %}
+                    <a class="primary-btn attention-btn" href="{{ url_for('player_onboarding', campaign_id=item.id) }}">Complete Onboarding</a>
+                  {% elif not item.has_completed_character_sheet %}
+                    <a class="ghost-btn" href="{{ url_for('player_character_sheet', campaign_id=item.id) }}">Edit Character</a>
+                  {% endif %}
                 <form method="post" action="{{ url_for('leave_campaign', campaign_id=item.id) }}" onsubmit="return window.confirm('Leave this campaign? This removes your character, notes, survey, and quest progress for it.');">
                   <button class="ghost-btn" type="submit">Leave</button>
                 </form>

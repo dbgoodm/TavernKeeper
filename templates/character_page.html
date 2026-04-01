@@ -3,12 +3,15 @@
 {% block app_content %}
   <section class="surface character-surface">
     <div class="character-page-actions">
-      <a class="primary-btn" href="{{ url_for('character_sheet_alt', membership_id=membership.id) }}">Open Alternate Sheet</a>
-      {% if membership.wiki_page_id %}
-        <a class="ghost-btn" href="{{ url_for('character_world_entry', membership_id=membership.id) }}">Open World Entry</a>
+      <a class="primary-btn" href="{{ url_for('character_sheet_alt', membership_id=membership.id) }}">Character Sheet</a>
+      {% if current_user.role == "dm" or current_user.id == membership.user_id %}
+        <a class="ghost-btn" href="{{ url_for('character_editor', membership_id=membership.id) }}">Edit Character</a>
       {% endif %}
       {% if membership.wiki_page_id %}
-        <a class="ghost-btn" href="{{ url_for('world_entry', page_id=membership.wiki_page_id) }}">Open World Entry</a>
+        <a class="ghost-btn" href="{{ url_for('character_world_entry', membership_id=membership.id) }}">Open World Page</a>
+      {% endif %}
+      {% if membership.wiki_page_id %}
+        <a class="ghost-btn" href="{{ url_for('world_entry', page_id=membership.wiki_page_id) }}">Open World Page</a>
       {% endif %}
     </div>
 
@@ -21,7 +24,7 @@
         {% endif %}
       </div>
       <div>
-        <p class="eyebrow">Character Page</p>
+        <p class="eyebrow">Character Overview</p>
         <h2>{{ membership.character_name }}</h2>
         <p class="character-subline">{{ membership.class_name or "Class Pending" }} - {{ membership.subclass or "Subclass Pending" }}</p>
         {% if character_user %}

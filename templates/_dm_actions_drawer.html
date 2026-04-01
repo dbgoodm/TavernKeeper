@@ -1,0 +1,252 @@
+{% if current_user and current_user.role == "dm" and active_sidebar_campaign %}
+  <aside class="broadcast-drawer" id="broadcastDrawer" hidden>
+    <div class="notes-drawer-header">
+      <div class="broadcast-heading">
+        <h3>DM Actions</h3>
+        <p class="broadcast-subheading">Publish updates, handouts, quests, and lore.</p>
+      </div>
+      <button class="preview-close" id="broadcastDrawerClose" type="button" aria-label="Close DM actions">X</button>
+    </div>
+    <div class="broadcast-mode-grid" id="broadcastModeGrid">
+      <button class="broadcast-mode-btn" type="button" data-broadcast-mode="announcement">Announcement</button>
+      <button class="broadcast-mode-btn" type="button" data-broadcast-mode="handout">Hand Out</button>
+      <button class="broadcast-mode-btn" type="button" data-broadcast-mode="quest">Quests</button>
+      <button class="broadcast-mode-btn" type="button" data-broadcast-mode="lore">Lore</button>
+    </div>
+
+    <form class="auth-form hidden-broadcast-form" method="post" action="{{ url_for('dm_dashboard') }}" id="broadcastComposerForm">
+      <input type="hidden" name="form_type" value="announcement" />
+      <input type="hidden" name="broadcast_id" id="broadcastIdInput" value="" />
+      <input type="hidden" name="kind" id="broadcastKindInput" value="" />
+
+      <label class="broadcast-field" data-broadcast-field="title">
+        Title
+        <input type="text" name="title" id="broadcastTitleInput" placeholder="Action title" />
+      </label>
+
+      <div class="broadcast-field hidden-broadcast-field" data-broadcast-field="targeting">
+        <span class="field-label">Audience</span>
+        <div class="chip-grid audience-chip-grid" id="broadcastAudienceGrid">
+          <label class="chip audience-chip">
+            <input type="checkbox" id="audience-all" name="audience_all" value="true" checked />
+            <span>All Players</span>
+          </label>
+          {% for item in dm_action_player_targets %}
+            <label class="chip audience-chip">
+              <input type="checkbox" name="target_user_ids" value="{{ item.user_id }}" />
+              <span>{{ item.display_name }} · {{ item.character_name }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <p class="helper">Choose `All Players` or target any number of current players.</p>
+      </div>
+
+      <label class="broadcast-field hidden-broadcast-field" data-broadcast-field="wiki-link">
+        Link Existing World Page
+        <select name="wiki_page_id">
+          <option value="">Create one automatically</option>
+          {% for page in dm_action_wiki_pages %}
+            <option value="{{ page.id }}" data-world-category="{{ page.world_category or '' }}">{{ page.title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label class="broadcast-field hidden-broadcast-field" data-broadcast-field="world-category">
+        World Atlas Section
+        <select name="world_category" id="broadcastWorldCategoryInput">
+          <option value="">Choose a section</option>
+          {% for option in dm_action_world_category_options %}
+            <option value="{{ option.key }}">{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <input type="hidden" name="auto_create_wiki" id="autoCreateWikiInput" value="false" />
+
+      <div class="broadcast-field hidden-broadcast-field" data-broadcast-field="markdown-tools">
+        <span class="field-label">Markdown Formatting</span>
+        {% set toolbar_target = "broadcastBodyInput" %}
+        {% include "_markdown_toolbar.html" %}
+      </div>
+
+      <label class="broadcast-field hidden-broadcast-field" data-broadcast-field="body">
+        <span id="broadcastBodyLabel">Message</span>
+        <textarea name="body" id="broadcastBodyInput" rows="6" placeholder=""></textarea>
+      </label>
+      <button class="primary-btn broadcast-submit" type="submit" data-broadcast-field="submit">Publish</button>
+    </form>
+  </aside>
+
+  <button class="broadcast-drawer-toggle" id="broadcastDrawerToggle" type="button" aria-expanded="false">DM Actions</button>
+
+  <script>
+    (() => {
+      const modeButtons = document.querySelectorAll("[data-broadcast-mode]");
+      const broadcastDrawer = document.getElementById("broadcastDrawer");
+      const broadcastDrawerToggle = document.getElementById("broadcastDrawerToggle");
+      const broadcastDrawerClose = document.getElementById("broadcastDrawerClose");
+      const composerForm = document.getElementById("broadcastComposerForm");
+      const broadcastIdInput = document.getElementById("broadcastIdInput");
+      const kindInput = document.getElementById("broadcastKindInput");
+      const bodyInput = document.getElementById("broadcastBodyInput");
+      const titleInput = document.getElementById("broadcastTitleInput");
+      const bodyLabel = document.getElementById("broadcastBodyLabel");
+      const autoCreateWikiInput = document.getElementById("autoCreateWikiInput");
+      const audienceAllInput = document.getElementById("audience-all");
+      const audiencePlayerInputs = document.querySelectorAll("input[name='target_user_ids']");
+      const wikiPageSelect = composerForm?.querySelector("select[name='wiki_page_id']");
+      const worldCategorySelect = document.getElementById("broadcastWorldCategoryInput");
+
+      if (!broadcastDrawer || !broadcastDrawerToggle || !broadcastDrawerClose || !composerForm || !broadcastIdInput || !kindInput || !bodyInput || !titleInput || !bodyLabel || !autoCreateWikiInput) {
+        return;
+      }
+
+      const fieldMap = {
+        title: document.querySelector("[data-broadcast-field='title']"),
+        targeting: document.querySelector("[data-broadcast-field='targeting']"),
+        wikiLink: document.querySelector("[data-broadcast-field='wiki-link']"),
+        worldCategory: document.querySelector("[data-broadcast-field='world-category']"),
+        markdownTools: document.querySelector("[data-broadcast-field='markdown-tools']"),
+        body: document.querySelector("[data-broadcast-field='body']"),
+        submit: document.querySelector("[data-broadcast-field='submit']"),
+      };
+
+      const modeConfig = {
+        announcement: { kind: "Announcement", titlePlaceholder: "Campaign announcement", bodyLabel: "Details", bodyPlaceholder: "Write the announcement details for the whole table.", show: ["title", "body", "submit"] },
+        handout: { kind: "Hand Out", titlePlaceholder: "Handout title", bodyLabel: "Handout Content", bodyPlaceholder: "Use markdown to format the handout text for players.", show: ["title", "targeting", "markdownTools", "body", "submit"] },
+        quest: { kind: "Quest", titlePlaceholder: "Quest title", bodyLabel: "Quest Details", bodyPlaceholder: "Use markdown for quest hooks, rewards, steps, and rumors.", show: ["title", "markdownTools", "body", "submit"] },
+        lore: { kind: "Lore", titlePlaceholder: "Lore page title", bodyLabel: "Lore Content", bodyPlaceholder: "Write the lore page in markdown. If you do not link a world page, one will be created automatically.", show: ["title", "targeting", "wikiLink", "worldCategory", "markdownTools", "body", "submit"] },
+      };
+
+      function resetAudienceSelection() {
+        if (!audienceAllInput) return;
+        audienceAllInput.checked = true;
+        audiencePlayerInputs.forEach((input) => {
+          input.checked = false;
+        });
+      }
+
+      function setBroadcastMode(mode) {
+        const config = modeConfig[mode];
+        if (!config) return;
+        modeButtons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.broadcastMode === mode);
+        });
+        composerForm.classList.remove("hidden-broadcast-form");
+        Object.values(fieldMap).forEach((field) => field?.classList.add("hidden-broadcast-field"));
+        config.show.forEach((key) => fieldMap[key]?.classList.remove("hidden-broadcast-field"));
+        kindInput.value = config.kind;
+        titleInput.placeholder = config.titlePlaceholder;
+        bodyLabel.textContent = config.bodyLabel;
+        bodyInput.placeholder = config.bodyPlaceholder;
+        autoCreateWikiInput.value = mode === "lore" ? "true" : "false";
+        if (!broadcastIdInput.value) {
+          resetAudienceSelection();
+          if (wikiPageSelect) wikiPageSelect.value = "";
+          if (worldCategorySelect) worldCategorySelect.value = "";
+        }
+      }
+
+      function setBroadcastDrawerOpen(open) {
+        broadcastDrawer.hidden = !open;
+        broadcastDrawerToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+
+      function loadBroadcastForEditing(button) {
+        const modeMap = { announcement: "announcement", handout: "handout", quest: "quest", lore: "lore" };
+        const mode = modeMap[button.dataset.broadcastMode] || "announcement";
+        broadcastIdInput.value = button.dataset.broadcastId || "";
+        setBroadcastMode(mode);
+        titleInput.value = button.dataset.broadcastTitle || "";
+        bodyInput.value = button.dataset.broadcastBody || "";
+        if (wikiPageSelect) wikiPageSelect.value = button.dataset.broadcastWikiPageId || "";
+        if (worldCategorySelect) {
+          worldCategorySelect.value = button.dataset.broadcastWorldCategory || "";
+          if (!worldCategorySelect.value && wikiPageSelect && wikiPageSelect.selectedOptions.length) {
+            worldCategorySelect.value = wikiPageSelect.selectedOptions[0].dataset.worldCategory || "";
+          }
+        }
+        const targets = (button.dataset.broadcastTargets || "").split(",").map((value) => value.trim()).filter(Boolean);
+        if (audienceAllInput) audienceAllInput.checked = targets.length === 0;
+        audiencePlayerInputs.forEach((input) => {
+          input.checked = targets.includes(input.value);
+        });
+        setBroadcastDrawerOpen(true);
+      }
+
+      if (wikiPageSelect && worldCategorySelect) {
+        wikiPageSelect.addEventListener("change", () => {
+          if (wikiPageSelect.value) {
+            worldCategorySelect.value = wikiPageSelect.selectedOptions[0].dataset.worldCategory || worldCategorySelect.value;
+          }
+        });
+      }
+
+      modeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          broadcastIdInput.value = "";
+          titleInput.value = "";
+          bodyInput.value = "";
+          setBroadcastMode(button.dataset.broadcastMode);
+        });
+      });
+
+      broadcastDrawerToggle.addEventListener("click", () => {
+        if (broadcastDrawer.hidden) {
+          broadcastIdInput.value = "";
+          titleInput.value = "";
+          bodyInput.value = "";
+          modeButtons.forEach((button) => button.classList.remove("active"));
+          composerForm.classList.add("hidden-broadcast-form");
+          Object.values(fieldMap).forEach((field) => field?.classList.add("hidden-broadcast-field"));
+          resetAudienceSelection();
+          if (wikiPageSelect) wikiPageSelect.value = "";
+          if (worldCategorySelect) worldCategorySelect.value = "";
+        }
+        setBroadcastDrawerOpen(broadcastDrawer.hidden);
+      });
+
+      broadcastDrawerClose.addEventListener("click", () => setBroadcastDrawerOpen(false));
+
+      if (audienceAllInput) {
+        audienceAllInput.addEventListener("change", () => {
+          if (audienceAllInput.checked) {
+            audiencePlayerInputs.forEach((input) => {
+              input.checked = false;
+            });
+          }
+        });
+      }
+
+      audiencePlayerInputs.forEach((input) => {
+        input.addEventListener("change", () => {
+          if (input.checked && audienceAllInput) audienceAllInput.checked = false;
+          const anyPlayersSelected = Array.from(audiencePlayerInputs).some((item) => item.checked);
+          if (!anyPlayersSelected && audienceAllInput) audienceAllInput.checked = true;
+        });
+      });
+
+      broadcastDrawer.querySelectorAll(".markdown-tool").forEach((button) => {
+        button.addEventListener("click", () => {
+          const wrap = button.dataset.wrap;
+          const prefix = button.dataset.prefix;
+          const template = button.dataset.template;
+          const start = bodyInput.selectionStart;
+          const end = bodyInput.selectionEnd;
+          const selected = bodyInput.value.slice(start, end);
+          let replacement = selected;
+          if (wrap) replacement = `${wrap}${selected || "text"}${wrap}`;
+          else if (prefix) replacement = `${prefix}${selected || ""}`;
+          else if (template) replacement = `${selected ? `[${selected}]` : template}`;
+          bodyInput.setRangeText(replacement, start, end, "end");
+          bodyInput.focus();
+        });
+      });
+
+      document.addEventListener("click", (event) => {
+        const editTrigger = event.target.closest("[data-edit-broadcast]");
+        if (editTrigger) loadBroadcastForEditing(editTrigger);
+      });
+    })();
+  </script>
+{% endif %}

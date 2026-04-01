@@ -6,7 +6,7 @@
       <a class="card-title-link" href="{{ url_for('world_atlas') }}">World Atlas</a>
       <span>/</span>
       {% if is_character_codex and membership %}
-        <a class="card-title-link" href="{{ url_for('character_page', membership_id=membership.id) }}">Character Page</a>
+        <a class="card-title-link" href="{{ url_for('character_sheet_alt', membership_id=membership.id) }}">Character Sheet</a>
         <span>/</span>
       {% endif %}
       <span>{{ page.title }}</span>
@@ -14,13 +14,17 @@
 
     <div class="codex-header">
       <div class="codex-header-copy">
-        <p class="eyebrow">Campaign World</p>
-        <h1>{{ page.title }}</h1>
+        <div class="card-header-inline world-inline-title">
+          <h1>{{ page.title }}</h1>
+          {% if not is_character_codex and current_user.role == "dm" and campaign and campaign.dm_user_id == current_user.id %}
+            <a class="icon-button icon-button-link" href="{{ url_for('world_editor', category_key=(page.world_category or 'misc'), page_id=page.id) }}" aria-label="Edit {{ page.title }}">✎</a>
+          {% endif %}
+        </div>
         {% if page.subtitle %}
           <p class="world-entry-subtitle">{{ page.subtitle }}</p>
         {% endif %}
         <div class="codex-meta-chips">
-          <span class="announcement-type">{{ page.source|replace("_", " ")|title if page.source else "World Entry" }}</span>
+          <span class="announcement-type">{{ page.source|replace("_", " ")|title if page.source else "World Page" }}</span>
           <span class="announcement-type">{{ page.status|default("published")|replace("_", " ")|title }}</span>
           <span class="announcement-type">{{ page.visibility|default("all_players")|replace("_", " ")|title }}</span>
           {% if campaign %}
@@ -33,20 +37,23 @@
       </div>
       <div class="codex-header-actions">
         {% if is_character_codex and membership %}
-          <a class="primary-btn" href="{{ url_for('character_sheet_alt', membership_id=membership.id) }}">Live Sheet</a>
-          <a class="ghost-btn" href="{{ url_for('character_page', membership_id=membership.id) }}">Character Page</a>
-        {% else %}
-          {% if current_user.role == "dm" and campaign and campaign.dm_user_id == current_user.id %}
-            <a class="ghost-btn" href="{{ url_for('world_editor', category_key=(page.world_category or 'misc'), page_id=page.id) }}">Edit Entry</a>
+          <a class="primary-btn" href="{{ url_for('character_sheet_alt', membership_id=membership.id) }}">Character Sheet</a>
+          {% if current_user.role == "dm" or current_user.id == membership.user_id %}
+            <a class="ghost-btn" href="{{ url_for('character_editor', membership_id=membership.id) }}">Edit Character</a>
           {% endif %}
-          <a class="ghost-btn" href="{{ url_for('world_landing') }}">World Index</a>
+        {% else %}
+          <a class="ghost-btn" href="{{ url_for('world_landing') }}">World Pages</a>
         {% endif %}
       </div>
     </div>
 
     {% if page.summary %}
       <section class="codex-featured world-entry-summary">
-        <p class="label">Summary</p>
+        <div class="section-heading">
+          <div>
+            <h3>Summary</h3>
+          </div>
+        </div>
         <p>{{ page.summary }}</p>
       </section>
     {% endif %}
@@ -54,9 +61,13 @@
     <div class="codex-layout">
       <aside class="codex-sidebar">
         <section class="codex-card">
-          <p class="label">Entry Details</p>
+          <div class="section-heading">
+            <div>
+              <h3>Page Details</h3>
+            </div>
+          </div>
           <div class="codex-detail-list">
-            <div><strong>Type</strong><span>{{ page.source|replace("_", " ")|title if page.source else "World Entry" }}</span></div>
+            <div><strong>Type</strong><span>{{ page.source|replace("_", " ")|title if page.source else "World Page" }}</span></div>
             <div><strong>Section</strong><span>{{ page.world_category|replace("-", " ")|replace("_", " ")|title if page.world_category else "Misc" }}</span></div>
             <div><strong>Status</strong><span>{{ page.status|default("published")|replace("_", " ")|title }}</span></div>
             <div><strong>Visibility</strong><span>{{ page.visibility|default("all_players")|replace("_", " ")|title }}</span></div>
@@ -74,7 +85,11 @@
 
         {% if membership %}
           <section class="codex-card">
-            <p class="label">Character Overview</p>
+            <div class="section-heading">
+              <div>
+                <h3>Character Overview</h3>
+              </div>
+            </div>
             <div class="codex-portrait-block">
               <div class="character-portrait-large codex-portrait">
                 {% if membership.portrait_url %}
@@ -99,18 +114,22 @@
         {% endif %}
 
         <section class="codex-card">
-          <p class="label">Related Entries</p>
+          <div class="section-heading">
+            <div>
+              <h3>Related Pages</h3>
+            </div>
+          </div>
           {% if related_pages %}
             <div class="codex-related-list">
               {% for related in related_pages %}
                 <a class="codex-related-link" href="{{ url_for('world_entry', page_id=related.id) }}">
                   <strong>{{ related.title }}</strong>
-                  <span>{{ related.source|replace("_", " ")|title if related.source else "World Entry" }}</span>
+                  <span>{{ related.source|replace("_", " ")|title if related.source else "World Page" }}</span>
                 </a>
               {% endfor %}
             </div>
           {% else %}
-            <p class="feed-empty">No related entries available yet.</p>
+            <p class="feed-empty">No related pages available yet.</p>
           {% endif %}
         </section>
       </aside>
