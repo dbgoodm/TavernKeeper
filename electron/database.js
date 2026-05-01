@@ -1,23 +1,40 @@
 const path = require('path')
+const fs = require('fs')
 const { app } = require('electron')
-const createDatabase = require('@databases/sqlite')
+const initSqlJs = require('sql.js')
 
-let db
+let db = null
+let dbPath = null
 
 function getDb() {
   return db
 }
 
+function saveDatabase() {
+  if (db && dbPath) {
+    const data = db.export()
+    const buffer = Buffer.from(data)
+    fs.writeFileSync(dbPath, buffer)
+  }
+}
+
 async function setupDatabase() {
   const userDataPath = app.getPath('userData')
-  const dbPath = path.join(userDataPath, 'tavernkeeper.db')
+  dbPath = path.join(userDataPath, 'tavernkeeper.db')
 
-  db = createDatabase(dbPath)
+  const SQL = await initSqlJs()
 
-  await db.query("PRAGMA journal_mode = WAL")
-  await db.query("PRAGMA foreign_keys = ON")
+  if (fs.existsSync(dbPath)) {
+    const buffer = fs.readFileSync(dbPath)
+    db = new SQL.Database(buffer)
+  } else {
+    db = new SQL.Database()
+  }
 
-  await db.query(`
+  db.run("PRAGMA journal_mode = WAL")
+  db.run("PRAGMA foreign_keys = ON")
+
+  db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL,
       display_name TEXT NOT NULL, password_hash TEXT NOT NULL,
@@ -28,7 +45,7 @@ async function setupDatabase() {
     )
   `)
 
-  await db.query(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS campaigns (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, premise TEXT DEFAULT '',
       invite_code TEXT UNIQUE NOT NULL, dm_user_id TEXT NOT NULL,
@@ -37,7 +54,7 @@ async function setupDatabase() {
     )
   `)
 
-  await db.query(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS memberships (
       id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL, user_id TEXT NOT NULL,
       character_name TEXT DEFAULT '', class_name TEXT DEFAULT '',
@@ -58,7 +75,7 @@ async function setupDatabase() {
     )
   `)
 
-  await db.query(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS notes (
       id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL,
       author_user_id TEXT NOT NULL, author_name TEXT NOT NULL,
@@ -67,7 +84,7 @@ async function setupDatabase() {
     )
   `)
 
-  await db.query(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS wiki_pages (
       id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL, title TEXT NOT NULL,
       content TEXT DEFAULT '', world_category TEXT DEFAULT 'lore',
@@ -78,7 +95,7 @@ async function setupDatabase() {
     )
   `)
 
-  await db.query(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS announcements (
       id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL,
       author_user_id TEXT NOT NULL, title TEXT NOT NULL,
@@ -86,8 +103,9 @@ async function setupDatabase() {
     )
   `)
 
+  saveDatabase()
   console.log('Database ready at:', dbPath)
   return db
 }
 
-module.exports = { setupDatabase, getDb }
+module.exports = { setupDatabase, getDb, saveDatabase }

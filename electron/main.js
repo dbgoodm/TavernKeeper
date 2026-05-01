@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
-const { setupDatabase } = require('./database')
+const { setupDatabase, saveDatabase } = require('./database')
 const { registerHandlers } = require('./handlers')
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
@@ -17,7 +17,6 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    icon: path.join(__dirname, '../public/icon.png'),
     show: false,
   })
 
@@ -33,7 +32,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   await setupDatabase()
-  registerHandlers(ipcMain)
+  registerHandlers(ipcMain, saveDatabase)
   createWindow()
 
   app.on('activate', () => {
